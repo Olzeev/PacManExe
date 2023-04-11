@@ -108,7 +108,9 @@ class RayCaster:
             fragment_x = ray_cur * WIDTH / RAYS_AMOUNT
             fragment_width = angle_delta / FOV * WIDTH
 
-            pygame.draw.rect(sc, (255, 255, 255), (fragment_x, HEIGHT / 2 - fragment_height / 2, fragment_width, fragment_height))
+            k = max(RAY_LENGTH - ray_cur_length_total, 0) / RAY_LENGTH
+
+            pygame.draw.rect(sc, (50 * k, 50 * k, 200 * k), (fragment_x, HEIGHT / 2 - fragment_height / 2, fragment_width, fragment_height))
 
 
 class App:
@@ -148,7 +150,7 @@ class App:
             ray_caster.draw(player, field, self.sc)
 
             player.check_movements()
-            field.draw_minimap(self.sc, player)
+            #field.draw_minimap(self.sc, player)
             self.print_text(0, 0, str(int(self.clock.get_fps())), 50, (255, 0, 0))
             self.update_window()
 
