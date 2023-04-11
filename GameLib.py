@@ -26,16 +26,17 @@ class Field:
         self.size_x = len(self.field[0])
         self.size_y = len(self.field)
 
-    def draw_minimap(self, sc, player):
+    def draw_minimap(self, sc, player, k=5):
+        pygame.draw.rect(sc, (0, 0, 30), (0, 0, self.size_x * TILE_SIZE / k, self.size_y * TILE_SIZE / k))
         for raw in range(self.size_x):
             for tile in range(self.size_y):
                 if self.field[tile][raw] == 1:
-                    pygame.draw.rect(sc, (255, 255, 255),
-                                     (raw * TILE_SIZE, tile * TILE_SIZE, TILE_SIZE, TILE_SIZE))
+                    pygame.draw.rect(sc, (0, 0, 150),
+                                     (raw * TILE_SIZE / k, tile * TILE_SIZE / k, TILE_SIZE / k, TILE_SIZE / k))
 
-        pygame.draw.circle(sc, (255, 255, 255), (player.x, player.y), 5)
-        pygame.draw.line(sc, (255, 0, 0), (player.x, player.y),
-                         (player.x + 10 * cos(radians(player.angle)), player.y - 10 * sin(radians(player.angle))), 3)
+        pygame.draw.circle(sc, (255, 255, 255), (player.x / k, player.y / k), 5)
+        pygame.draw.line(sc, (255, 0, 0), (player.x / k, player.y / k),
+                         (player.x / k + 10 * cos(radians(player.angle)), (player.y / k - 10 * sin(radians(player.angle)))), 3)
 
 
 class Player:
@@ -176,8 +177,8 @@ class App:
             ray_caster.draw(player, field, self.sc)
 
 
-            #field.draw_minimap(self.sc, player)
-            self.print_text(0, 0, str(int(self.clock.get_fps())), 50, (255, 0, 0))
+            field.draw_minimap(self.sc, player)
+            self.print_text(WIDTH - 100, 0, str(int(self.clock.get_fps())), 50, (255, 0, 0))
             self.update_window()
 
 
