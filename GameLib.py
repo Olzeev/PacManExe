@@ -34,7 +34,7 @@ class Field:
 
 
 class Player:
-    def __init__(self, x, y, angle=0, speed=5, angle_speed=5):
+    def __init__(self, x, y, angle=0.1, speed=5, angle_speed=5):
         self.x, self.y = x, y
         self.angle = angle
         self.angle_speed = angle_speed
@@ -71,20 +71,44 @@ class RayCaster:
         for ray_cur in range(RAYS_AMOUNT):
             angle_cur = angle0 - ray_cur * angle_delta
             ray_cur_length_total = RAY_LENGTH
-            for ray_cur_length in range(RAY_LENGTH):
-                x_cur = player.x + ray_cur_length * cos(radians(angle_cur))
-                y_cur = player.y - ray_cur_length * sin(radians(angle_cur))
 
-                if field.field[int(y_cur // TILE_SIZE)][int(x_cur // TILE_SIZE)] == 1:
-                    ray_cur_length_total = ray_cur_length
+            x_tile = player.x // TILE_SIZE * TILE_SIZE
+            y_tile = player.y // TILE_SIZE * TILE_SIZE
+
+            sin_a = sin(radians(angle_cur))
+            cos_a = cos(radians(angle_cur))
+
+            x_cur, delta_x = (x_tile, -1) if cos_a < 0 else (x_tile + TILE_SIZE, 1)
+            y_cur, delta_y = (y_tile, -1) if sin_a > 0 else (y_tile + TILE_SIZE, 1)
+            for i in range(0, field.size_x * TILE_SIZE, TILE_SIZE):
+                dist_x = (x_cur - player.x) / cos_a
+                y = player.y - dist_x * sin_a
+                ind_x = int((x_cur + delta_x) // TILE_SIZE)
+                ind_y = int(y // TILE_SIZE)
+                if (ind_x < 0 or ind_x >= field.size_x or ind_y < 0 or ind_y >= field.size_y) or field.field[ind_y][ind_x] != 0:
                     break
+                x_cur += delta_x * TILE_SIZE
+
+            for i in range(0, field.size_y * TILE_SIZE, TILE_SIZE):
+                dist_y = (player.y - y_cur) / sin_a
+                x = player.x + dist_y * cos_a
+                ind_x = int(x // TILE_SIZE)
+                ind_y = int((y_cur + delta_y) // TILE_SIZE)
+                if (ind_x < 0 or ind_x >= field.size_x or ind_y < 0 or ind_y >= field.size_y) or field.field[ind_y][ind_x] != 0:
+                    break
+                y_cur += delta_y * TILE_SIZE
+
+            ray_cur_length_total = min(dist_x, dist_y)
+
+            # pygame.draw.line(sc, (255, 0, 0), (player.x, player.y), (player.x + ray_cur_length_total * cos(radians(angle_cur)), player.y - ray_cur_length_total * sin(radians(angle_cur))))
+
             ray_cur_length_total *= cos(radians(abs(angle_cur - player.angle)))
             angle_in_screen_tan = (WALL_HEIGHT / 2) / ray_cur_length_total
             fragment_height = angle_in_screen_tan * DISTANCE_TO_SCREEN * 2
             fragment_x = ray_cur * WIDTH / RAYS_AMOUNT
             fragment_width = angle_delta / FOV * WIDTH
-            color = int((RAY_LENGTH - ray_cur_length_total) / RAY_LENGTH * 255)
-            pygame.draw.rect(sc, (color, color, color), (fragment_x, HEIGHT / 2 - fragment_height / 2, fragment_width, fragment_height))
+
+            pygame.draw.rect(sc, (255, 255, 255), (fragment_x, HEIGHT / 2 - fragment_height / 2, fragment_width, fragment_height))
 
 
 class App:
@@ -124,6 +148,7 @@ class App:
             ray_caster.draw(player, field, self.sc)
 
             player.check_movements()
+            field.draw_minimap(self.sc, player)
             self.print_text(0, 0, str(int(self.clock.get_fps())), 50, (255, 0, 0))
             self.update_window()
 
