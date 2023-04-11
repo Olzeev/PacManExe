@@ -47,7 +47,7 @@ class Player:
         self.speed = speed
         self.mouse_prev_x = WIDTH // 2
 
-    def check_movements(self):
+    def check_movements(self, field):
         global moving
         mouse_x, mouse_y = pygame.mouse.get_pos()
         if mouse_x != WIDTH // 2:
@@ -57,28 +57,40 @@ class Player:
         moving_now = False
 
         if key.is_pressed('w'):
-            self.x += self.speed * cos(radians(self.angle))
-            self.y -= self.speed * sin(radians(self.angle))
-            moving = True
-            moving_now = True
+            x1 = self.x + self.speed * cos(radians(self.angle))
+            y1 = self.y - self.speed * sin(radians(self.angle))
+            if field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] != 1:
+                self.x = x1
+                self.y = y1
+                moving = True
+                moving_now = True
 
         if key.is_pressed('a'):
-            self.x += self.speed * cos(radians(self.angle + 90))
-            self.y -= self.speed * sin(radians(self.angle + 90))
-            moving = True
-            moving_now = True
+            x1 = self.x + self.speed * cos(radians(self.angle + 90))
+            y1 = self.y - self.speed * sin(radians(self.angle + 90))
+            if field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] != 1:
+                self.x = x1
+                self.y = y1
+                moving = True
+                moving_now = True
 
         if key.is_pressed('s'):
-            self.x += self.speed * cos(radians(self.angle + 180))
-            self.y -= self.speed * sin(radians(self.angle + 180))
-            moving = True
-            moving_now = True
+            x1 = self.x + self.speed * cos(radians(self.angle + 180))
+            y1 = self.y - self.speed * sin(radians(self.angle + 180))
+            if field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] != 1:
+                self.x = x1
+                self.y = y1
+                moving = True
+                moving_now = True
 
         if key.is_pressed('d'):
-            self.x += self.speed * cos(radians(self.angle - 90))
-            self.y -= self.speed * sin(radians(self.angle - 90))
-            moving = True
-            moving_now = True
+            x1 = self.x + self.speed * cos(radians(self.angle - 90))
+            y1 = self.y - self.speed * sin(radians(self.angle - 90))
+            if field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] != 1:
+                self.x = x1
+                self.y = y1
+                moving = True
+                moving_now = True
 
         if not moving_now:
             moving = False
@@ -170,7 +182,7 @@ class App:
 
         while self.run:
             self.check_events()
-            player.check_movements()
+            player.check_movements(field)
 
             self.sc.fill((0, 0, 0))
 
@@ -178,7 +190,7 @@ class App:
 
 
             field.draw_minimap(self.sc, player)
-            self.print_text(WIDTH - 100, 0, str(int(self.clock.get_fps())), 50, (255, 0, 0))
+            self.print_text(WIDTH - 50, 0, str(int(self.clock.get_fps())), 50, (255, 0, 0))
             self.update_window()
 
 
