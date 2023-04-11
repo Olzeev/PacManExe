@@ -4,6 +4,11 @@ from const import *
 from math import sin, cos, atan, radians
 
 
+time = 0
+time_moving = 0
+moving = False
+
+
 class Field:
     def __init__(self):
         self.field = [
@@ -42,30 +47,45 @@ class Player:
         self.mouse_prev_x = WIDTH // 2
 
     def check_movements(self):
+        global moving
         mouse_x, mouse_y = pygame.mouse.get_pos()
         if mouse_x != WIDTH // 2:
             self.angle -= (mouse_x - WIDTH // 2) * SENSITIVITY / 5
             pygame.mouse.set_pos((WIDTH // 2, HEIGHT // 2))
 
+        moving_now = False
+
         if key.is_pressed('w'):
             self.x += self.speed * cos(radians(self.angle))
             self.y -= self.speed * sin(radians(self.angle))
+            moving = True
+            moving_now = True
 
         if key.is_pressed('a'):
             self.x += self.speed * cos(radians(self.angle + 90))
             self.y -= self.speed * sin(radians(self.angle + 90))
+            moving = True
+            moving_now = True
 
         if key.is_pressed('s'):
             self.x += self.speed * cos(radians(self.angle + 180))
             self.y -= self.speed * sin(radians(self.angle + 180))
+            moving = True
+            moving_now = True
 
         if key.is_pressed('d'):
             self.x += self.speed * cos(radians(self.angle - 90))
             self.y -= self.speed * sin(radians(self.angle - 90))
+            moving = True
+            moving_now = True
+
+        if not moving_now:
+            moving = False
 
 
 class RayCaster:
     def draw(self, player, field, sc):
+        pygame.draw.rect(sc, (100, 100, 100), (0, HEIGHT // 2, WIDTH, HEIGHT // 2))
         angle0 = player.angle + FOV / 2
         angle_delta = FOV / RAYS_AMOUNT
         for ray_cur in range(RAYS_AMOUNT):
@@ -109,8 +129,9 @@ class RayCaster:
             fragment_width = angle_delta / FOV * WIDTH
 
             k = max(RAY_LENGTH - ray_cur_length_total, 0) / RAY_LENGTH
+            add_y = sin(time_moving / 5) * 30
 
-            pygame.draw.rect(sc, (50 * k, 50 * k, 200 * k), (fragment_x, HEIGHT / 2 - fragment_height / 2, fragment_width, fragment_height))
+            pygame.draw.rect(sc, (50 * k, 50 * k, 200 * k), (fragment_x, HEIGHT / 2 - fragment_height / 2 + add_y, fragment_width, fragment_height))
 
 
 class App:
@@ -126,8 +147,12 @@ class App:
                 exit()
 
     def update_window(self):
+        global time, time_moving
         pygame.display.flip()
         self.clock.tick(FPS)
+        time += 1
+        if moving:
+            time_moving += 1
 
     def print_text(self, x, y, text, size, color):
         font = pygame.font.Font(None, size)
@@ -144,12 +169,13 @@ class App:
 
         while self.run:
             self.check_events()
+            player.check_movements()
 
             self.sc.fill((0, 0, 0))
 
             ray_caster.draw(player, field, self.sc)
 
-            player.check_movements()
+
             #field.draw_minimap(self.sc, player)
             self.print_text(0, 0, str(int(self.clock.get_fps())), 50, (255, 0, 0))
             self.update_window()
