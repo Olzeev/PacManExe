@@ -1,12 +1,19 @@
 import pygame
 import keyboard as key
 from const import *
-from math import sin, cos, atan, radians
+from math import sin, cos, asin, acos, radians, degrees, atan2
+import numpy.linalg
 
 
 time = 0
 time_moving = 0
 moving = False
+
+
+def check_one_signed(a, b):
+    if (a >= 0 and b >= 0) or (a <= 0 and b <= 0) :
+        return True
+    return False
 
 
 class NPC:
@@ -164,6 +171,7 @@ class RayCaster:
 
             x_cur, delta_x = (x_tile, -1) if cos_a < 0 else (x_tile + TILE_SIZE, 1)
             y_cur, delta_y = (y_tile, -1) if sin_a > 0 else (y_tile + TILE_SIZE, 1)
+
             for i in range(0, field.size_x * TILE_SIZE, TILE_SIZE):
                 dist_x = (x_cur - player.x) / cos_a
                 y = player.y - dist_x * sin_a
@@ -197,6 +205,77 @@ class RayCaster:
 
             pygame.draw.rect(sc, (50 * k, 50 * k, 200 * k), (fragment_x, HEIGHT / 2 - fragment_height / 2 + add_y, fragment_width, fragment_height))
 
+    def check_intersection(self, sc, field, x1, y1, x2, y2):
+        dist = ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
+        cos_a = (x2 - x1) / dist
+        sin_a = (y1 - y2) / dist
+        for i in range(int(dist)):
+            x = int((x1 + i * cos_a) // TILE_SIZE)
+            y = int((y1 - i * sin_a) // TILE_SIZE)
+            if field.field[y][x] == 1:
+                return True
+        return False
+
+class Sprite:
+    def __init__(self, sprite, digit_on_map, type):
+        self.sprite = sprite
+        self.digit_in_map = digit_on_map
+        self.type = type
+
+    def draw_cricles(self, sc, field, player, ray_caster):
+        to_draw = []
+        for x in range(field.size_x):
+            for y in range(field.size_y):
+                if field.field[y][x] == self.digit_in_map:
+                    sprite_x = x * TILE_SIZE + TILE_SIZE / 2
+                    sprite_y = y * TILE_SIZE + TILE_SIZE / 2
+                    if not ray_caster.check_intersection(sc, field, player.x, player.y, sprite_x, sprite_y):
+                        dist = ((player.x - (x * TILE_SIZE + TILE_SIZE / 2)) ** 2 + (player.y - (y * TILE_SIZE + TILE_SIZE / 2)) ** 2) ** 0.5
+                        angle_p = player.angle % 360
+                        dx, dy = x * TILE_SIZE + TILE_SIZE / 2 - player.x, player.y - y * TILE_SIZE - TILE_SIZE / 2
+
+                        theta = degrees(atan2(dy, dx))
+                        gamma = theta - angle_p
+                        if dx > 0 and 180 <= angle_p <= 360 or dx < 0 and dy < 0:
+                            gamma += 360
+
+                        angle_delta = FOV / RAYS_AMOUNT
+                        delta_rays = int(gamma / angle_delta)
+                        center_ray = RAYS_AMOUNT // 2 - 1
+                        current_ray = center_ray + delta_rays
+                        dist *= cos(radians(FOV / 2 - current_ray * angle_delta))
+
+                        if 0 <= current_ray <= RAYS_AMOUNT - 1:
+                            angle_in_screen_tan = (WALL_HEIGHT / 2) / dist
+                            fragment_height = angle_in_screen_tan * DISTANCE_TO_SCREEN * 2
+                            shift = fragment_height / 2 * 1.4
+
+                            add_y = sin(time_moving / 5) * 30
+                            sprite_pos_on_screen = (WIDTH - current_ray * (WIDTH // RAYS_AMOUNT), HEIGHT / 2 - fragment_height / 2 + shift + add_y)
+
+                            if 0 <= sprite_pos_on_screen[0] < WIDTH and 0 <= sprite_pos_on_screen[1] < HEIGHT:
+                                c = min(int(255 / dist * 100), 255)
+
+                                to_draw.append((dist, (c, c, 0), sprite_pos_on_screen, fragment_height / 10))
+
+
+                        '''
+                        if cos_a_sprite <= 0:
+                            angle_sprite = 180 - angle_sprite
+                            if abs(angle_sprite - player.angle % 180) <= FOV / 2:
+                                if angle_sprite >= player.angle % 180:
+                                    sprite_x = (angle_sprite - player.angle % 180) / (FOV / 2) * (WIDTH / 2)
+                                else:
+                                    sprite_x = (player.angle % 180 - angle_sprite) / (FOV / 2) * (WIDTH / 2)
+                        '''
+        to_draw = sorted(to_draw, key=lambda x: x[0], reverse=True)
+        for el in to_draw:
+            pygame.draw.circle(sc, el[1], el[2], el[3])
+
+    def draw(self, sc, field, player, ray_caster):
+        if self.type == 'circle':
+            self.draw_cricles(sc, field, player, ray_caster)
+
 
 class App:
     def create_window(self):
@@ -228,6 +307,10 @@ class App:
         elif align == 'center':
             self.sc.blit(surf, (x - surf.get_width() / 2, y))
 
+    def draw_sprites(self, sc, field, player, sprites, ray_caster):
+        for sprite in sprites:
+            sprite.draw(self.sc, field, player, ray_caster)
+
     def main(self):
         pygame.mouse.set_pos((WIDTH // 2, HEIGHT // 2))
         pygame.mouse.set_visible(False)
@@ -236,6 +319,7 @@ class App:
         player = Player(200, 200)
         ray_caster = RayCaster()
         npc1 = NPC(650, 650)
+        sprites = [Sprite(pygame.image.load('src/circle.png'), 0, 'circle')]
 
         while self.run:
             self.check_events()
@@ -244,8 +328,10 @@ class App:
             self.sc.fill((0, 0, 0))
 
             ray_caster.draw(player, field, self.sc)
-
             field.draw_minimap(self.sc, player)
+            self.draw_sprites(self.sc, field, player, sprites, ray_caster)
+
+
             self.print_text(WIDTH / 2, 10, str(player.score), 70, (255, 255, 0), align='center')
             self.print_text(WIDTH - 10, 10, str(int(self.clock.get_fps())), 50, (255, 0, 0), align='right')
             npc1.move(self.sc, field, player)
