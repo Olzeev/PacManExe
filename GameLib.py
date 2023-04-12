@@ -2,7 +2,7 @@ import pygame
 import keyboard as key
 from const import *
 from math import sin, cos, asin, acos, radians, degrees, atan2
-
+import random
 
 time = 0
 time_moving = 0
@@ -13,6 +13,9 @@ def check_one_signed(a, b):
     if (a >= 0 and b >= 0) or (a <= 0 and b <= 0):
         return True
     return False
+
+def dist_between_point(x1, y1, x2, y2):
+    return ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
 
 
 class NPC:
@@ -55,6 +58,12 @@ class Field:
             [1, 0, 1, 1, 0, 1, 1, 0, 0, 1],
             [1, 0, 1, 0, 0, 1, 1, 0, 0, 1],
             [1, 0, 1, 1, 1, 1, 1, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         ]
@@ -109,6 +118,7 @@ class Player:
                 if field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] == 0:
                     self.score += 1
                     field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] = -1
+                    pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/point_claim.wav'))
 
         if key.is_pressed('a'):
             x1 = self.x + self.speed * cos(radians(self.angle + 90))
@@ -122,6 +132,7 @@ class Player:
                         (x1 // TILE_SIZE * TILE_SIZE + TILE_SIZE / 2 - x1) ** 2 + (y1 // TILE_SIZE * TILE_SIZE + TILE_SIZE / 2 - y1) ** 2 <= TILE_SIZE ** 2:
                     self.score += 1
                     field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] = -1
+                    pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/point_claim.wav'))
 
         if key.is_pressed('s'):
             x1 = self.x + self.speed * cos(radians(self.angle + 180))
@@ -135,6 +146,7 @@ class Player:
                         (x1 // TILE_SIZE * TILE_SIZE + TILE_SIZE / 2 - x1) ** 2 + (y1 // TILE_SIZE * TILE_SIZE + TILE_SIZE / 2 - y1) ** 2 <= TILE_SIZE ** 2:
                     self.score += 1
                     field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] = -1
+                    pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/point_claim.wav'))
 
         if key.is_pressed('d'):
             x1 = self.x + self.speed * cos(radians(self.angle - 90))
@@ -148,6 +160,8 @@ class Player:
                         (x1 // TILE_SIZE * TILE_SIZE + TILE_SIZE / 2 - x1) ** 2 + (y1 // TILE_SIZE * TILE_SIZE + TILE_SIZE / 2 - y1) ** 2 <= TILE_SIZE ** 2:
                     self.score += 1
                     field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] = -1
+                    pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/point_claim.wav'))
+
 
         if not moving_now:
             moving = False
@@ -316,9 +330,14 @@ class Sprite:
 class App:
     def create_window(self):
         pygame.init()
+        pygame.mixer.init()
         self.sc = pygame.display.set_mode((WIDTH, HEIGHT))
         self.clock = pygame.time.Clock()
         self.run = True
+        self.beat_duration = 100
+        self.beat_duration_counter = 0
+        self.danger_volume = 0
+
 
     def check_events(self):
         for event in pygame.event.get():
@@ -332,6 +351,13 @@ class App:
         time += 1
         if moving:
             time_moving += 1
+        self.beat_duration_counter += 1
+        pygame.mixer.Channel(1).set_volume(self.danger_volume)
+        if self.beat_duration_counter >= self.beat_duration:
+            pygame.mixer.Channel(3).play(pygame.mixer.Sound('src/heart_beat.wav'))
+            self.beat_duration_counter = 0
+
+        pygame.mixer.Channel(2).set_volume(max(1 - self.danger_volume * 2, 0))
 
     def print_text(self, x, y, text, size, color, align='left'):
         font = pygame.font.Font(None, size)
@@ -358,8 +384,6 @@ class App:
             elif el[0] == 'sprite':
                 self.sc.blit(pygame.transform.scale(el[-1], (el[4], el[4])), el[3])
 
-
-
     def main(self):
         pygame.mouse.set_pos((WIDTH // 2, HEIGHT // 2))
         pygame.mouse.set_visible(False)
@@ -367,9 +391,26 @@ class App:
         field = Field()
         player = Player(200, 200)
         ray_caster = RayCaster()
-        NPC_s = [NPC(750, 650)]
+        NPC_s = [NPC(750, 650),
+                 NPC(150, 650)]
         sprites = [Sprite(None, 0, 'circle'),
-                   Sprite(pygame.transform.scale(pygame.image.load('src/img.png'), (TILE_SIZE, TILE_SIZE)), None, 'npc')]
+                   Sprite(pygame.transform.scale(pygame.image.load('src/img_1.png'), (TILE_SIZE, TILE_SIZE)), None, 'npc')]
+        background_sounds = [
+            pygame.mixer.Sound('src/background_audio/1.oga'),
+            pygame.mixer.Sound('src/background_audio/2.oga'),
+            pygame.mixer.Sound('src/background_audio/3.oga'),
+            pygame.mixer.Sound('src/background_audio/4.oga'),
+            pygame.mixer.Sound('src/background_audio/5.oga'),
+            pygame.mixer.Sound('src/background_audio/6.oga'),
+            pygame.mixer.Sound('src/background_audio/7.oga'),
+            pygame.mixer.Sound('src/background_audio/8.oga'),
+            pygame.mixer.Sound('src/background_audio/9.ogg')
+        ]
+        pygame.mixer.Channel(0).set_volume(0.2)
+        pygame.mixer.Channel(1).play(pygame.mixer.Sound('src/danger_theme.mp3'))
+        pygame.mixer.Channel(1).set_volume(0)
+        pygame.mixer.Channel(4).set_volume(0.1)
+        pygame.mixer.Channel(4).play(pygame.mixer.Sound('src/pacman_sound.mp3'))
 
         while self.run:
             self.check_events()
@@ -388,6 +429,25 @@ class App:
             for npc in NPC_s:
                 npc.move(self.sc, field, player)
                 pygame.draw.circle(self.sc, (255, 0, 0), (npc.x / 5, npc.y / 5), 10)
-            self.update_window()
 
+            dist = None
+            for npc in NPC_s:
+                if dist is not None:
+                    dist = min(dist, dist_between_point(player.x, player.y, npc.x, npc.y))
+                else:
+                    dist = dist_between_point(player.x, player.y, npc.x, npc.y)
+            self.beat_duration = max(dist / 10, 20)
+            self.danger_volume = 60 / dist
+            if self.danger_volume <= 0.07:
+                self.danger_volume = 0
+                pygame.mixer.Channel(2).unpause()
+            else:
+                pygame.mixer.Channel(2).pause()
+            if random.randint(1, 300) == 1 and not pygame.mixer.Channel(2).get_busy():
+                pygame.mixer.Channel(2).play(random.choice(background_sounds))
+            if moving:
+                pygame.mixer.Channel(4).unpause()
+            else:
+                pygame.mixer.Channel(4).pause()
+            self.update_window()
 
