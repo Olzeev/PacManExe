@@ -19,9 +19,11 @@ def dist_between_point(x1, y1, x2, y2):
 
 
 class NPC:
-    def __init__(self, x, y, angle=0.1):
+    def __init__(self, x, y, sprite, angle=0.1, speed=2):
         self.x, self.y = x, y
         self.angle = angle
+        self.sprite = sprite
+        self.speed = speed
 
     def find_shortest_way(self, field, start, player):  # made using BFS algorithm
         queue = [[start]]
@@ -39,12 +41,19 @@ class NPC:
 
     def move(self, sc, field, player):
         way = self.find_shortest_way(field, (self.x // TILE_SIZE, self.y // TILE_SIZE), player)
-        x, y = self.x - TILE_SIZE / 2, self.y - TILE_SIZE / 2
-        if way is not None:
-            for el in way[1:len(way)]:
-                pygame.draw.line(sc, (255, 255, 255), ((x + TILE_SIZE / 2) / 5, (y + TILE_SIZE / 2) / 5), ((el[0] * TILE_SIZE + TILE_SIZE / 2) / 5, (el[1] * TILE_SIZE + TILE_SIZE / 2) / 5))
-                x = el[0] * TILE_SIZE
-                y = el[1] * TILE_SIZE
+
+        if len(way) >= 2:
+            x_to = way[1][0] * TILE_SIZE + TILE_SIZE / 2
+            y_to = way[1][1] * TILE_SIZE + TILE_SIZE / 2
+            if x_to > self.x:
+                self.x += self.speed
+            elif x_to < self.x:
+                self.x -= self.speed
+
+            if y_to > self.y:
+                self.y += self.speed
+            elif y_to < self.y:
+                self.y -= self.speed
 
 
 class Field:
@@ -233,8 +242,8 @@ class RayCaster:
 
 
 class Sprite:
-    def __init__(self, sprite, digit_on_map, type):
-        self.sprite = sprite
+    def __init__(self, digit_on_map, type):
+
         self.digit_in_map = digit_on_map
         self.type = type
 
@@ -316,7 +325,7 @@ class Sprite:
 
                     if 0 <= sprite_pos_on_screen[0] < WIDTH and 0 <= sprite_pos_on_screen[1] < HEIGHT:
                         c = min(int(255 / dist * 50), 255)
-                        to_draw.append(('sprite', dist, (c, 0, 0), sprite_pos_on_screen, fragment_height, self.sprite))
+                        to_draw.append(('sprite', dist, npc.sprite, sprite_pos_on_screen, fragment_height))
 
         return to_draw
 
@@ -382,7 +391,7 @@ class App:
             elif el[0] == 'rect':
                 pygame.draw.rect(self.sc, el[2], el[3])
             elif el[0] == 'sprite':
-                self.sc.blit(pygame.transform.scale(el[-1], (el[4], el[4])), el[3])
+                self.sc.blit(pygame.transform.scale(el[2], (el[4], el[4])), el[3])
 
     def main(self):
         pygame.mouse.set_pos((WIDTH // 2, HEIGHT // 2))
@@ -391,10 +400,12 @@ class App:
         field = Field()
         player = Player(200, 200)
         ray_caster = RayCaster()
-        NPC_s = [NPC(750, 650),
-                 NPC(150, 650)]
-        sprites = [Sprite(None, 0, 'circle'),
-                   Sprite(pygame.transform.scale(pygame.image.load('src/img_1.png'), (TILE_SIZE, TILE_SIZE)), None, 'npc')]
+        NPC_s = [NPC(750, 650, pygame.image.load('src/ghosts/ghost1.png')),
+                 NPC(150, 650, pygame.image.load('src/ghosts/ghost2.png')),
+                 NPC(350, 350, pygame.image.load('src/ghosts/ghost3.png')),
+                 NPC(250, 150, pygame.image.load('src/ghosts/ghost4.png'))]
+        sprites = [Sprite(0, 'circle'),
+                   Sprite(None, 'npc')]
         background_sounds = [
             pygame.mixer.Sound('src/background_audio/1.oga'),
             pygame.mixer.Sound('src/background_audio/2.oga'),
