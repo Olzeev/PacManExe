@@ -1,10 +1,10 @@
-WIDTH, HEIGHT = 1280, 720
+WIDTH, HEIGHT = 1920, 1080
 FPS = 60
 
 FOV = 90
 TILE_SIZE = 100
 RAY_LENGTH = TILE_SIZE * 10
-RAYS_AMOUNT = int(WIDTH)   # this number must be a divider of 'WIDTH' variable
+RAYS_AMOUNT = int(WIDTH / 10)   # this number must be a divider of 'WIDTH' variable
 WALL_HEIGHT = int(HEIGHT * 0.8)
 DISTANCE_TO_SCREEN = 100
 SENSITIVITY = 0.3

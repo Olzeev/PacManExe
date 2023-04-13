@@ -16,12 +16,13 @@ def check_one_signed(a, b):
         return True
     return False
 
+
 def dist_between_point(x1, y1, x2, y2):
     return ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
 
 
 class NPC:
-    def __init__(self, x, y, sprite, angle=0.1, speed=2):
+    def __init__(self, x, y, sprite, angle=0.1, speed=4):
         self.x, self.y = x, y
         self.angle = angle
         self.sprite = sprite
@@ -61,22 +62,25 @@ class NPC:
 class Field:
     def __init__(self):
         self.field = [
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 1, 0, 1, 1, 1, 0, 1],
-            [1, 0, 1, 1, 0, 1, 0, 1, 0, 1],
-            [1, 0, 0, 1, 0, 1, 0, 0, 0, 1],
-            [1, 0, 1, 1, 0, 1, 1, 0, 0, 1],
-            [1, 0, 1, 0, 0, 1, 1, 0, 0, 1],
-            [1, 0, 1, 1, 1, 1, 1, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1],
+            [1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+            [1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1],
+            [1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1],
+            [1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1],
+            [1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1],
+            [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1],
+            [1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+            [1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         ]
         self.size_x = len(self.field[0])
         self.size_y = len(self.field)
@@ -398,6 +402,9 @@ class App:
 
         pygame.mixer.Channel(2).set_volume(max(1 - self.danger_volume * 2, 0))
 
+        if not pygame.mixer.Channel(1).get_busy():
+            pygame.mixer.Channel(1).play(pygame.mixer.Sound('src/danger_theme.mp3'))
+
         pause_duration_counter += 1
 
     def print_text(self, x, y, text, size, color, align='left'):
@@ -445,12 +452,13 @@ class App:
         pygame.mouse.set_visible(False)
         pygame.event.set_grab(True)
         field = Field()
-        player = Player(200, 200)
+        player = Player(151, 151)
         ray_caster = RayCaster()
-        NPC_s = [NPC(750, 650, pygame.image.load('src/ghosts/ghost1.png')),
-                 NPC(150, 650, pygame.image.load('src/ghosts/ghost2.png')),
-                 NPC(350, 350, pygame.image.load('src/ghosts/ghost3.png')),
-                 NPC(250, 150, pygame.image.load('src/ghosts/ghost4.png'))]
+        NPC_s = [NPC(750, 850, pygame.image.load('src/ghosts/ghost1.png')),
+                 NPC(800, 850, pygame.image.load('src/ghosts/ghost2.png')),
+                 NPC(850, 850, pygame.image.load('src/ghosts/ghost3.png')),
+                 NPC(900, 850, pygame.image.load('src/ghosts/ghost4.png'))]
+
         sprites = [Sprite(0, 'circle'),
                    Sprite(None, 'npc')]
         background_sounds = [
@@ -497,8 +505,8 @@ class App:
                     dist = min(dist, dist_between_point(player.x, player.y, npc.x, npc.y))
                 else:
                     dist = dist_between_point(player.x, player.y, npc.x, npc.y)
-            self.beat_duration = max(dist / 10, 20)
-            self.danger_volume = 60 / dist
+            self.beat_duration = max(dist / 12, 20)
+            self.danger_volume = 40 / dist
             if self.danger_volume <= 0.07:
                 self.danger_volume = 0
                 pygame.mixer.Channel(2).unpause()
@@ -519,19 +527,32 @@ class App:
             self.update_window()
 
 
+def draw_buttons_main(sc):
+    pygame.draw.rect(sc, (255, 255, 255), (100, 100, 400, 100))
+
+
 app = App()
 
 sc1 = pygame.display.set_mode((WIDTH, HEIGHT))
 clock1 = pygame.time.Clock()
 
 while True:
+    player1 = Player(150, 1050)
+    field1 = Field()
+
+    raycaster1 = RayCaster()
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 exit()
         sc1.fill((0, 0, 0))
+        to_draw = raycaster1.draw(player1, field1, sc1)
         if key.is_pressed('enter'):
             break
+        for el in to_draw:
+            pygame.draw.rect(sc1, el[2], el[3])
+        player1.angle += 0.06
+
         pygame.display.flip()
         clock1.tick(FPS)
 
