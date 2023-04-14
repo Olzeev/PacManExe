@@ -52,6 +52,7 @@ class NPC:
             if len(way) >= 2:
                 x_to = way[1][0] * TILE_SIZE + TILE_SIZE / 2
                 y_to = way[1][1] * TILE_SIZE + TILE_SIZE / 2
+
                 if x_to > self.x:
                     self.x += self.speed
                 elif x_to < self.x:
@@ -61,6 +62,7 @@ class NPC:
                     self.y += self.speed
                 elif y_to < self.y:
                     self.y -= self.speed
+
         else:
             if self.x // TILE_SIZE == self.way_to_roam[0] and self.y // TILE_SIZE == self.way_to_roam[1]:
                 to_choose = []
@@ -76,6 +78,7 @@ class NPC:
                 way = self.find_shortest_way(field, (self.x // TILE_SIZE, self.y // TILE_SIZE), self.way_to_roam)
                 x_to = way[1][0] * TILE_SIZE + TILE_SIZE / 2
                 y_to = way[1][1] * TILE_SIZE + TILE_SIZE / 2
+
                 if x_to > self.x:
                     self.x += self.speed
                 elif x_to < self.x:
@@ -401,6 +404,13 @@ class App:
                         pygame.event.set_grab(True)
                     elif x >= WIDTH / 2 - 200 and x <= WIDTH / 2 + 200 and y >= HEIGHT / 2 + 80 and y <= HEIGHT / 2 + 180:
                         self.run = False
+                        pygame.mixer.Channel(0).stop()
+                        pygame.mixer.Channel(1).stop()
+                        pygame.mixer.Channel(2).stop()
+                        pygame.mixer.Channel(3).stop()
+                        pygame.mixer.Channel(4).stop()
+                        pygame.mixer.Channel(5).stop()
+                        return 'exit'
 
 
 
@@ -511,7 +521,11 @@ class App:
         pygame.mixer.Channel(4).play(pygame.mixer.Sound('src/pacman_sound.mp3'))
         pygame.mixer.Channel(5).play(pygame.mixer.Sound('src/opening.mp3'))
         while self.run:
-            self.check_events()
+            res = self.check_events()
+            if res == 'exit':
+                return res
+            if player.score == 174:
+                return 'win'
             if not pause:
                 player.check_movements(field)
 
@@ -528,13 +542,30 @@ class App:
 
             hunt = False
             for npc in NPC_s:
+                if dist_between_point(player.x, player.y, npc.x, npc.y) <= 70:
+                    self.run = False
+                    pygame.mixer.Channel(0).stop()
+                    pygame.mixer.Channel(1).stop()
+                    pygame.mixer.Channel(2).stop()
+                    pygame.mixer.Channel(3).stop()
+                    pygame.mixer.Channel(4).stop()
+                    pygame.mixer.Channel(5).stop()
+                    return 'lose'
                 if npc.hunt:
                     hunt = True
+                    npc.speed = 4
+                else:
+                    npc.speed = 2
                 if not pause:
                     npc.move(self.sc, field, player, ray_caster)
                 pygame.draw.circle(self.sc, (255, 0, 0), (npc.x / 5, npc.y / 5), 10)
 
-            self.danger_volume = 1 if hunt else 0
+            if hunt:
+                self.danger_volume = max(self.danger_volume, 0.02)
+                self.danger_volume *= 1.07
+            else:
+                self.danger_volume = min(self.danger_volume, 1)
+                self.danger_volume /= 1.07
 
             dist = None
             for npc in NPC_s:
@@ -569,7 +600,8 @@ sc1 = pygame.display.set_mode((WIDTH, HEIGHT))
 clock1 = pygame.time.Clock()
 
 while True:
-    player1 = Player(150, 1050)
+    player1 = Player(110, 110)
+    player1.angle = -30.1
     field1 = Field()
 
     raycaster1 = RayCaster()
@@ -583,12 +615,12 @@ while True:
             break
         for el in to_draw:
             pygame.draw.rect(sc1, el[2], el[3])
-        player1.angle += 0.06
+
 
         pygame.display.flip()
         clock1.tick(FPS)
 
     app.create_window()
-    app.main()
+    result = app.main()
 
 
