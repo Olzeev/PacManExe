@@ -66,7 +66,7 @@ class NPC:
                 to_choose = []
                 for x in range(field.size_x):
                     for y in range(field.size_y):
-                        if field.field[y][x] == 0:
+                        if field.field[y][x] == 0 or field.field[y][x] == -1:
                             to_choose.append((x, y))
 
                 self.way_to_roam = random.choice(to_choose)
