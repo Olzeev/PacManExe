@@ -27,36 +27,66 @@ class NPC:
         self.angle = angle
         self.sprite = sprite
         self.speed = speed
+        self.hunt = False
+        self.way_to_roam = (self.x // TILE_SIZE, self.y // TILE_SIZE)
 
-    def find_shortest_way(self, field, start, player):  # made using BFS algorithm
+    def find_shortest_way(self, field, start, finish):  # made using BFS algorithm
         queue = [[start]]
         seen = {start}
         while queue:
             path = queue[0]
             queue = queue[1:len(queue)]
             x, y = path[-1]
-            if y == player.y // TILE_SIZE and x == player.x // TILE_SIZE:
+            if y == finish[1] and x == finish[0]:
                 return path
             for x2, y2 in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
                 if 0 <= x2 < field.size_x and 0 <= y2 < field.size_y and field.field[y2][x2] != 1 and (x2, y2) not in seen:
                     queue.append(path + [(x2, y2)])
                     seen.add((x2, y2))
 
-    def move(self, sc, field, player):
-        way = self.find_shortest_way(field, (self.x // TILE_SIZE, self.y // TILE_SIZE), player)
+    def move(self, sc, field, player, raycaster):
+        if dist_between_point(self.x, self.y, player.x, player.y) <= 500 or not raycaster.check_intersection(sc, field, self.x, self.y, player.x, player.y):
+            self.hunt = True
+            way = self.find_shortest_way(field, (self.x // TILE_SIZE, self.y // TILE_SIZE), (player.x // TILE_SIZE, player.y // TILE_SIZE))
 
-        if len(way) >= 2:
-            x_to = way[1][0] * TILE_SIZE + TILE_SIZE / 2
-            y_to = way[1][1] * TILE_SIZE + TILE_SIZE / 2
-            if x_to > self.x:
-                self.x += self.speed
-            elif x_to < self.x:
-                self.x -= self.speed
+            if len(way) >= 2:
+                x_to = way[1][0] * TILE_SIZE + TILE_SIZE / 2
+                y_to = way[1][1] * TILE_SIZE + TILE_SIZE / 2
+                if x_to > self.x:
+                    self.x += self.speed
+                elif x_to < self.x:
+                    self.x -= self.speed
 
-            if y_to > self.y:
-                self.y += self.speed
-            elif y_to < self.y:
-                self.y -= self.speed
+                if y_to > self.y:
+                    self.y += self.speed
+                elif y_to < self.y:
+                    self.y -= self.speed
+        else:
+            if self.x // TILE_SIZE == self.way_to_roam[0] and self.y // TILE_SIZE == self.way_to_roam[1]:
+                to_choose = []
+                for x in range(field.size_x):
+                    for y in range(field.size_y):
+                        if field.field[y][x] == 0:
+                            to_choose.append((x, y))
+
+                self.way_to_roam = random.choice(to_choose)
+
+            else:
+
+                way = self.find_shortest_way(field, (self.x // TILE_SIZE, self.y // TILE_SIZE), self.way_to_roam)
+                x_to = way[1][0] * TILE_SIZE + TILE_SIZE / 2
+                y_to = way[1][1] * TILE_SIZE + TILE_SIZE / 2
+                if x_to > self.x:
+                    self.x += self.speed
+                elif x_to < self.x:
+                    self.x -= self.speed
+
+                if y_to > self.y:
+                    self.y += self.speed
+                elif y_to < self.y:
+                    self.y -= self.speed
+
+            self.hunt = False
 
 
 class Field:
@@ -90,10 +120,10 @@ class Field:
             for tile in range(self.size_y):
                 dist_to_player = max((player.x // TILE_SIZE - raw) ** 2 + (player.y // TILE_SIZE - tile) ** 2, 1)
                 if self.field[tile][raw] == 1:
-                    pygame.draw.rect(sc, (0, 0, min(150 / dist_to_player * 5, 150)),
+                    pygame.draw.rect(sc, (0, 0, min(150 / dist_to_player, 150)),
                                      (raw * TILE_SIZE / k, tile * TILE_SIZE / k, TILE_SIZE / k, TILE_SIZE / k))
                 else:
-                    pygame.draw.rect(sc, (0, 0, min(50 / dist_to_player * 5, 50)),
+                    pygame.draw.rect(sc, (0, 0, min(50 / dist_to_player, 50)),
                                      (raw * TILE_SIZE / k, tile * TILE_SIZE / k, TILE_SIZE / k, TILE_SIZE / k))
                     if self.field[tile][raw] == 0:
                         pygame.draw.circle(sc, (min(255 / dist_to_player, 255), min(255 / dist_to_player, 255), 0), (raw * TILE_SIZE / k + TILE_SIZE / 2 / k, tile * TILE_SIZE / k + TILE_SIZE / 2 / k), TILE_SIZE / k / 5)
@@ -395,6 +425,8 @@ class App:
             time_moving += 1
         self.beat_duration_counter += 1
         pygame.mixer.Channel(1).set_volume(self.danger_volume)
+        #if self.danger_volume:
+        #    pygame.mixer.Channel(1).play(pygame.mixer.Sound('src/danger_theme.mp3'))
         if self.beat_duration_counter >= self.beat_duration:
             if not pause:
                 pygame.mixer.Channel(3).play(pygame.mixer.Sound('src/heart_beat.wav'))
@@ -454,10 +486,10 @@ class App:
         field = Field()
         player = Player(151, 151)
         ray_caster = RayCaster()
-        NPC_s = [NPC(750, 850, pygame.image.load('src/ghosts/ghost1.png')),
-                 NPC(800, 850, pygame.image.load('src/ghosts/ghost2.png')),
-                 NPC(850, 850, pygame.image.load('src/ghosts/ghost3.png')),
-                 NPC(900, 850, pygame.image.load('src/ghosts/ghost4.png'))]
+        NPC_s = [NPC(850, 950, pygame.image.load('src/ghosts/ghost1.png')),
+                 NPC(900, 950, pygame.image.load('src/ghosts/ghost2.png')),
+                 NPC(950, 950, pygame.image.load('src/ghosts/ghost3.png')),
+                 NPC(1000, 950, pygame.image.load('src/ghosts/ghost4.png'))]
 
         sprites = [Sprite(0, 'circle'),
                    Sprite(None, 'npc')]
@@ -494,10 +526,15 @@ class App:
             self.print_text(WIDTH / 2, 10, str(player.score), 70, (255, 255, 0), align='center')
             self.print_text(WIDTH - 10, 10, str(int(self.clock.get_fps())), 50, (255, 0, 0), align='right')
 
+            hunt = False
             for npc in NPC_s:
+                if npc.hunt:
+                    hunt = True
                 if not pause:
-                    npc.move(self.sc, field, player)
+                    npc.move(self.sc, field, player, ray_caster)
                 pygame.draw.circle(self.sc, (255, 0, 0), (npc.x / 5, npc.y / 5), 10)
+
+            self.danger_volume = 1 if hunt else 0
 
             dist = None
             for npc in NPC_s:
@@ -506,12 +543,7 @@ class App:
                 else:
                     dist = dist_between_point(player.x, player.y, npc.x, npc.y)
             self.beat_duration = max(dist / 12, 20)
-            self.danger_volume = 40 / dist
-            if self.danger_volume <= 0.07:
-                self.danger_volume = 0
-                pygame.mixer.Channel(2).unpause()
-            else:
-                pygame.mixer.Channel(2).pause()
+
             if random.randint(1, 300) == 1 and not pygame.mixer.Channel(2).get_busy():
                 pygame.mixer.Channel(2).play(random.choice(background_sounds))
             if moving:
