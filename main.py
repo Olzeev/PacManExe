@@ -681,14 +681,26 @@ def draw_screamer(color):
 
 
 def draw_lose_screen():
-    while True:
+    run = True
+    while run:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = event.pos
+                if x >= WIDTH / 2 - 150 and x <= WIDTH / 2 + 150 and y >= HEIGHT - 200 and y <= HEIGHT - 100:
+                    run = False
 
         sc1.fill((0, 0, 0))
 
-        print_text(sc1, 0, 0, str(score), 100, (255, 0, 0))
+        print_text(sc1, WIDTH / 2, 150, 'Game Over', 100, (180, 0, 0), align='center', font='src/font3.ttf')
+        print_text(sc1, WIDTH / 2, HEIGHT / 2 - 50, 'Score ' + str(score), 100, (200, 0, 0), align='center', font='src/font2.ttf')
+
+        x, y = pygame.mouse.get_pos()
+        delta_color = 0
+        if x >= WIDTH / 2 - 150 and x <= WIDTH / 2 + 150 and y >= HEIGHT - 200 and y <= HEIGHT - 100:
+            delta_color = 50
+        print_text(sc1, WIDTH / 2, HEIGHT - 200, 'Continue', 100, (180 - delta_color, 180 - delta_color, 180 - delta_color), align='center', font='src/font2.ttf')
 
         pygame.display.flip()
         clock1.tick(FPS)
@@ -711,7 +723,7 @@ app = App()
 sc1 = pygame.display.set_mode((WIDTH, HEIGHT))
 clock1 = pygame.time.Clock()
 
-result = None
+result = 'win'
 
 while True:
     pygame.init()
@@ -721,6 +733,7 @@ while True:
     elif type(result) == tuple:
         draw_screamer(result[1])
         draw_lose_screen()
+        draw_main_menu()
     else:
         draw_win_screen()
 
