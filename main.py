@@ -33,6 +33,7 @@ def print_text(sc, x, y, text, size, color, align='left', font=None):
         sc.blit(surf, (x - surf.get_width(), y))
     elif align == 'center':
         sc.blit(surf, (x - surf.get_width() / 2, y))
+    return surf
 
 
 class NPC:
@@ -532,6 +533,14 @@ class App:
             if res == 'exit':
                 return res
             if player.score == 174:
+                pygame.mixer.Channel(0).stop()
+                pygame.mixer.Channel(1).stop()
+                pygame.mixer.Channel(2).stop()
+                pygame.mixer.Channel(3).stop()
+                pygame.mixer.Channel(4).stop()
+                pygame.mixer.Channel(5).stop()
+                pygame.mouse.set_visible(True)
+                pygame.event.set_grab(False)
                 return 'win'
             if not pause:
                 player.check_movements(field)
@@ -707,12 +716,34 @@ def draw_lose_screen():
 
 
 def draw_win_screen():
-    while True:
+    run = True
+    while run:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = event.pos
+                if x >= WIDTH / 2 - 150 and x <= WIDTH / 2 + 150 and y >= HEIGHT - 200 and y <= HEIGHT - 100:
+                    run = False
 
         sc1.fill((0, 0, 0))
+
+        print_text(sc1, WIDTH / 2, 150, 'Game complete', 100, (200, 200, 200), align='center', font='src/font3.ttf')
+        print_text(sc1, WIDTH / 2 - 200, HEIGHT / 2 - 50, 'Time:', 100, (200, 0, 0), align='left', font='src/font4.ttf')
+        surf = print_text(sc1, WIDTH / 2 + 20, HEIGHT / 2 - 50, str(time // 60 // 60), 100, (180, 180, 180),
+                   align='left', font='src/font4.ttf')
+        print_text(sc1, WIDTH / 2 + 20 + surf.get_width() + 10, HEIGHT / 2 - 50, 'm', 100, (200, 0, 0),
+                   align='left', font='src/font4.ttf')
+        surf1 = print_text(sc1, WIDTH / 2 + 120 + surf.get_width(), HEIGHT / 2 - 50, str((time // 60) % 60), 100, (180, 180, 180),
+                   align='left', font='src/font4.ttf')
+        print_text(sc1, WIDTH / 2 + 140 + surf.get_width() + surf1.get_width(), HEIGHT / 2 - 50, 's', 100, (200, 0, 0),
+                   align='left', font='src/font4.ttf')
+
+        x, y = pygame.mouse.get_pos()
+        delta_color = 0
+        if x >= WIDTH / 2 - 150 and x <= WIDTH / 2 + 150 and y >= HEIGHT - 200 and y <= HEIGHT - 100:
+            delta_color = 50
+        print_text(sc1, WIDTH / 2, HEIGHT - 200, 'Continue', 100, (180 - delta_color, 180 - delta_color, 180 - delta_color), align='center', font='src/font2.ttf')
 
         pygame.display.flip()
         clock1.tick(FPS)
@@ -723,9 +754,10 @@ app = App()
 sc1 = pygame.display.set_mode((WIDTH, HEIGHT))
 clock1 = pygame.time.Clock()
 
-result = 'win'
+result = None
 
 while True:
+
     pygame.init()
     pygame.mixer.init()
     if result is None or result == 'exit':
@@ -736,6 +768,7 @@ while True:
         draw_main_menu()
     else:
         draw_win_screen()
+        draw_main_menu()
 
     app.create_window()
     result = app.main()
