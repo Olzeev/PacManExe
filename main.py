@@ -9,6 +9,8 @@ time_moving = 0
 moving = False
 pause = False
 pause_duration_counter = 0
+score = 0
+floor = pygame.transform.scale(pygame.image.load('src/floor.png'), (WIDTH, HEIGHT / 2))
 
 
 def check_one_signed(a, b):
@@ -21,14 +23,27 @@ def dist_between_point(x1, y1, x2, y2):
     return ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
 
 
+def print_text(sc, x, y, text, size, color, align='left', font=None):
+
+    font = pygame.font.Font(font, size)
+    surf = font.render(text, True, color)
+    if align == 'left':
+        sc.blit(surf, (x, y))
+    elif align == 'right':
+        sc.blit(surf, (x - surf.get_width(), y))
+    elif align == 'center':
+        sc.blit(surf, (x - surf.get_width() / 2, y))
+
+
 class NPC:
-    def __init__(self, x, y, sprite, angle=0.1, speed=4):
+    def __init__(self, x, y, sprite, color, angle=0.1, speed=4):
         self.x, self.y = x, y
         self.angle = angle
         self.sprite = sprite
         self.speed = speed
         self.hunt = False
         self.way_to_roam = (self.x // TILE_SIZE, self.y // TILE_SIZE)
+        self.color = color
 
     def find_shortest_way(self, field, start, finish):  # made using BFS algorithm
         queue = [[start]]
@@ -217,7 +232,9 @@ class Player:
 
 class RayCaster:
     def draw(self, player, field, sc):
-        pygame.draw.rect(sc, (100, 100, 100), (0, HEIGHT // 2, WIDTH, HEIGHT // 2))
+        add_y = sin(time_moving / 5) * 30
+        sc.blit(floor, (0, HEIGHT / 2))
+
         angle0 = player.angle + FOV / 2
         angle_delta = FOV / RAYS_AMOUNT
         to_draw = []
@@ -262,8 +279,8 @@ class RayCaster:
             fragment_x = ray_cur * WIDTH / RAYS_AMOUNT
             fragment_width = angle_delta / FOV * WIDTH
 
-            k = max(RAY_LENGTH - ray_cur_length_total, 0) / RAY_LENGTH
-            add_y = sin(time_moving / 5) * 30
+            k = min(max(RAY_LENGTH - ray_cur_length_total, 0) / (RAY_LENGTH + 500), 1)
+
             to_draw.append(('rect', ray_cur_length_total, (50 * k, 50 * k, 200 * k), (fragment_x, HEIGHT / 2 - fragment_height / 2 + add_y, fragment_width, fragment_height)))
 
         return to_draw
@@ -377,8 +394,8 @@ class Sprite:
 
 class App:
     def create_window(self):
-        pygame.init()
-        pygame.mixer.init()
+        WIDTH = pygame.display.Info().current_w
+        HEIGHT = pygame.display.Info().current_h
         self.sc = pygame.display.set_mode((WIDTH, HEIGHT))
         self.clock = pygame.time.Clock()
         self.run = True
@@ -449,16 +466,6 @@ class App:
 
         pause_duration_counter += 1
 
-    def print_text(self, x, y, text, size, color, align='left'):
-        font = pygame.font.Font(None, size)
-        surf = font.render(text, True, color)
-        if align == 'left':
-            self.sc.blit(surf, (x, y))
-        elif align == 'right':
-            self.sc.blit(surf, (x - surf.get_width(), y))
-        elif align == 'center':
-            self.sc.blit(surf, (x - surf.get_width() / 2, y))
-
     def draw_sprites(self, sc, field, player, sprites, ray_caster, NPC_s):
         ans = []
         for sprite in sprites:
@@ -479,13 +486,13 @@ class App:
         color_delta1 = 0
         color_delta2 = 0
         if x >= WIDTH / 2 - 200 and x <= WIDTH / 2 + 200 and y >= HEIGHT / 2 - 120 and y <= HEIGHT / 2 - 20:
-            color_delta1 = 100
+            color_delta1 = 50
         elif x >= WIDTH / 2 - 200 and x <= WIDTH / 2 + 200 and y >= HEIGHT / 2 + 80 and y <= HEIGHT / 2 + 180:
-            color_delta2 = 100
-        pygame.draw.rect(self.sc, (255 - color_delta1, 0, 0), (WIDTH / 2 - 200, HEIGHT / 2 - 120, 400, 100), border_radius=10)
-        self.print_text(WIDTH / 2, HEIGHT / 2 - 100, 'Continue', 100, (255 - color_delta1, 255 - color_delta1, 255 - color_delta1), 'center')
-        pygame.draw.rect(self.sc, (255 - color_delta2, 0, 0), (WIDTH / 2 - 200, HEIGHT / 2 + 80, 400, 100), border_radius=10)
-        self.print_text(WIDTH / 2, HEIGHT / 2 + 100, 'Main menu', 100, (255 - color_delta2, 255 - color_delta2, 255 - color_delta2), 'center')
+            color_delta2 = 50
+        pygame.draw.rect(self.sc, (180 - color_delta1, 0, 0), (WIDTH / 2 - 200, HEIGHT / 2 - 120, 400, 100), border_radius=10)
+        print_text(self.sc, WIDTH / 2, HEIGHT / 2 - 100, 'Continue', 60, (255 - color_delta1, 255 - color_delta1, 255 - color_delta1), align='center', font='src/font3.ttf')
+        pygame.draw.rect(self.sc, (180 - color_delta2, 0, 0), (WIDTH / 2 - 200, HEIGHT / 2 + 80, 400, 100), border_radius=10)
+        print_text(self.sc, WIDTH / 2, HEIGHT / 2 + 100, 'Main menu', 60, (255 - color_delta2, 255 - color_delta2, 255 - color_delta2), align='center', font='src/font3.ttf')
 
     def main(self):
         global pause
@@ -496,10 +503,10 @@ class App:
         field = Field()
         player = Player(151, 151)
         ray_caster = RayCaster()
-        NPC_s = [NPC(850, 950, pygame.image.load('src/ghosts/ghost1.png')),
-                 NPC(900, 950, pygame.image.load('src/ghosts/ghost2.png')),
-                 NPC(950, 950, pygame.image.load('src/ghosts/ghost3.png')),
-                 NPC(1000, 950, pygame.image.load('src/ghosts/ghost4.png'))]
+        NPC_s = [NPC(850, 950, pygame.image.load('src/ghosts/ghost1.png'), 'red'),
+                 NPC(900, 950, pygame.image.load('src/ghosts/ghost2.png'), 'blue'),
+                 NPC(950, 950, pygame.image.load('src/ghosts/ghost3.png'), 'yellow'),
+                 NPC(1000, 950, pygame.image.load('src/ghosts/ghost4.png'), 'pink')]
 
         sprites = [Sprite(0, 'circle'),
                    Sprite(None, 'npc')]
@@ -537,8 +544,8 @@ class App:
             self.draw(to_draw)
             field.draw_minimap(self.sc, player)
 
-            self.print_text(WIDTH / 2, 10, str(player.score), 70, (255, 255, 0), align='center')
-            self.print_text(WIDTH - 10, 10, str(int(self.clock.get_fps())), 50, (255, 0, 0), align='right')
+            print_text(self.sc, WIDTH / 2, 10, str(player.score), 70, (255, 255, 0), align='center', font='src/font2.ttf')
+            #print_text(self.sc, WIDTH - 10, 10, str(int(self.clock.get_fps())), 50, (255, 0, 0), align='right')
 
             hunt = False
             for npc in NPC_s:
@@ -550,7 +557,9 @@ class App:
                     pygame.mixer.Channel(3).stop()
                     pygame.mixer.Channel(4).stop()
                     pygame.mixer.Channel(5).stop()
-                    return 'lose'
+                    global score
+                    score = player.score
+                    return ('lose', npc.color)
                 if npc.hunt:
                     hunt = True
                     npc.speed = 4
@@ -590,8 +599,111 @@ class App:
             self.update_window()
 
 
-def draw_buttons_main(sc):
-    pygame.draw.rect(sc, (255, 255, 255), (100, 100, 400, 100))
+def draw_buttons_main(sc, color1, color2):
+    print_text(sc1, WIDTH * 0.75, 100, 'Menu', 100, (255, 255, 255), font='src/font1.ttf')
+    #pygame.draw.rect(sc, (255, 255, 255), (WIDTH * 0.75, 300, 130, 60), 2)
+    print_text(sc1, WIDTH * 0.75, 300, 'Start', 80, color1, font='src/font2.ttf')
+    #pygame.draw.rect(sc, (255, 255, 255), (WIDTH * 0.75, 400, 120, 60), 2)
+    print_text(sc1, WIDTH * 0.75, 400, 'Quit', 80, color2, font='src/font2.ttf')
+
+
+def draw_main_menu():
+    player1 = Player(110, 110)
+    player1.angle = -30.1
+    field1 = Field()
+    bg = pygame.transform.scale(pygame.image.load('src/main_menu_bg.png'), (WIDTH, HEIGHT))
+
+    raycaster1 = RayCaster()
+    run = True
+    pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/background_music.mp3'))
+    pygame.mixer.Channel(0).set_volume(0.2)
+    while run:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = event.pos
+                if x >= WIDTH * 0.75 and x <= WIDTH * 0.75 + 130 and y >= 300 and y <= 360:
+                    run = False
+                    pygame.mixer.Channel(0).stop()
+                elif x >= WIDTH * 0.75 and x <= WIDTH * 0.75 + 120 and y >= 400 and y <= 460:
+                    exit()
+        sc1.blit(bg, (0, 0))
+
+        print_text(sc1, WIDTH * 0.2, 120, 'PacMan', 100, (190, 190, 50), font='src/font4.ttf')
+        print_text(sc1, WIDTH * 0.2 + 310, 120, '.exe', 100, (190, 0, 0), font='src/font4.ttf')
+
+        color1 = (255, 0, 0)
+        color2 = (255, 0, 0)
+        x, y = pygame.mouse.get_pos()
+        if x >= WIDTH * 0.75 and x <= WIDTH * 0.75 + 130 and y >= 300 and y <= 360:
+            color1 = (180, 0, 0)
+        if x >= WIDTH * 0.75 and x <= WIDTH * 0.75 + 120 and y >= 400 and y <= 460:
+            color2 = (180, 0, 0)
+
+        draw_buttons_main(sc1, color1, color2)
+
+        pygame.display.flip()
+        clock1.tick(FPS)
+
+
+def draw_screamer(color):
+    pygame.mixer.Channel(0).set_volume(1)
+    pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/screamer.mp3'))
+    delta_y = 200
+
+    if color == 'red':
+        image = pygame.image.load('src/ghosts/ghost1.png')
+    elif color == 'blue':
+        image = pygame.image.load('src/ghosts/ghost2.png')
+    elif color == 'yellow':
+        image = pygame.image.load('src/ghosts/ghost3.png')
+    else:
+        image = pygame.image.load('src/ghosts/ghost4.png')
+    image = pygame.transform.scale(image, (HEIGHT, HEIGHT))
+    bg = pygame.transform.scale(pygame.image.load('src/screamer_bg.png'), (WIDTH, HEIGHT))
+    size = HEIGHT
+    run = True
+    while run:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                exit()
+            if event.type == pygame.MOUSEBUTTONDOWN and delta_y <= 1:
+                run = False
+        sc1.blit(bg, (0, 0))
+
+        sc1.blit(image, (WIDTH // 2 - image.get_width() // 2 + random.randint(-50, 50) * (delta_y / 200), delta_y - 200))
+        image = pygame.transform.scale(image, (size, size))
+        delta_y *= 0.95
+        size += 10 * (delta_y / 200)
+        pygame.display.flip()
+        clock1.tick(FPS)
+
+
+def draw_lose_screen():
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                exit()
+
+        sc1.fill((0, 0, 0))
+
+        print_text(sc1, 0, 0, str(score), 100, (255, 0, 0))
+
+        pygame.display.flip()
+        clock1.tick(FPS)
+
+
+def draw_win_screen():
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                exit()
+
+        sc1.fill((0, 0, 0))
+
+        pygame.display.flip()
+        clock1.tick(FPS)
 
 
 app = App()
@@ -599,26 +711,18 @@ app = App()
 sc1 = pygame.display.set_mode((WIDTH, HEIGHT))
 clock1 = pygame.time.Clock()
 
+result = None
+
 while True:
-    player1 = Player(110, 110)
-    player1.angle = -30.1
-    field1 = Field()
-
-    raycaster1 = RayCaster()
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                exit()
-        sc1.fill((0, 0, 0))
-        to_draw = raycaster1.draw(player1, field1, sc1)
-        if key.is_pressed('enter'):
-            break
-        for el in to_draw:
-            pygame.draw.rect(sc1, el[2], el[3])
-
-
-        pygame.display.flip()
-        clock1.tick(FPS)
+    pygame.init()
+    pygame.mixer.init()
+    if result is None or result == 'exit':
+        draw_main_menu()
+    elif type(result) == tuple:
+        draw_screamer(result[1])
+        draw_lose_screen()
+    else:
+        draw_win_screen()
 
     app.create_window()
     result = app.main()
