@@ -430,6 +430,10 @@ class App:
                         pygame.mixer.Channel(4).stop()
                         pygame.mixer.Channel(5).stop()
                         return 'exit'
+                    elif x >= WIDTH / 2 - 96 and x <= WIDTH / 2 + 96 and y >= HEIGHT / 2 + 304 and y <= HEIGHT / 2 + 346:
+                        global SENSITIVITY
+                        SENSITIVITY = (x - (WIDTH / 2 - 96)) / 192
+                    #pygame.draw.rect(self.sc, (255, 255, 255), (WIDTH / 2 - 96, HEIGHT / 2 + 304, 192 * SENSITIVITY, 42))
 
 
 
@@ -495,6 +499,10 @@ class App:
         print_text(self.sc, WIDTH / 2, HEIGHT / 2 - 100, 'Continue', 60, (255 - color_delta1, 255 - color_delta1, 255 - color_delta1), align='center', font='src/font3.ttf')
         pygame.draw.rect(self.sc, (180 - color_delta2, 0, 0), (WIDTH / 2 - 200, HEIGHT / 2 + 80, 400, 100), border_radius=10)
         print_text(self.sc, WIDTH / 2, HEIGHT / 2 + 100, 'Main menu', 60, (255 - color_delta2, 255 - color_delta2, 255 - color_delta2), align='center', font='src/font3.ttf')
+        print_text(self.sc, WIDTH / 2, HEIGHT / 2 + 250, 'Sensitivity', 30,
+                   (255, 255, 255), align='center', font='src/font3.ttf')
+        pygame.draw.rect(self.sc, (255, 255, 255), (WIDTH / 2 - 100, HEIGHT / 2 + 300, 200, 50), 2)
+        pygame.draw.rect(self.sc, (255, 255, 255), (WIDTH / 2 - 96, HEIGHT / 2 + 304, 192 * SENSITIVITY, 42))
 
     def main(self):
         global pause
