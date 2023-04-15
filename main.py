@@ -622,7 +622,7 @@ def draw_main_menu():
     player1.angle = -30.1
     field1 = Field()
     bg = pygame.transform.scale(pygame.image.load('src/main_menu_bg.png'), (WIDTH, HEIGHT))
-
+    manual = pygame.transform.scale(pygame.image.load('src/manual.png'), (300, 411))
     raycaster1 = RayCaster()
     run = True
     pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/background_music.mp3'))
@@ -652,7 +652,7 @@ def draw_main_menu():
             color2 = (180, 0, 0)
 
         draw_buttons_main(sc1, color1, color2)
-
+        sc1.blit(manual, (WIDTH - 500, HEIGHT - 500))
         pygame.display.flip()
         clock1.tick(FPS)
 
