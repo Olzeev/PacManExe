@@ -11,6 +11,7 @@ pause = False
 pause_duration_counter = 0
 score = 0
 floor = pygame.transform.scale(pygame.image.load('src/floor.png'), (WIDTH, HEIGHT / 2))
+level = 1
 
 
 def check_one_signed(a, b):
@@ -37,7 +38,7 @@ def print_text(sc, x, y, text, size, color, align='left', font=None):
 
 
 class NPC:
-    def __init__(self, x, y, sprite, color, angle=0.1, speed=4):
+    def __init__(self, x, y, sprite, color, angle=0.1, speed=3+level / 5):
         self.x, self.y = x, y
         self.angle = angle
         self.sprite = sprite
@@ -539,8 +540,6 @@ class App:
                 pygame.mixer.Channel(3).stop()
                 pygame.mixer.Channel(4).stop()
                 pygame.mixer.Channel(5).stop()
-                pygame.mouse.set_visible(True)
-                pygame.event.set_grab(False)
                 return 'win'
             if not pause:
                 player.check_movements(field)
@@ -612,11 +611,13 @@ def draw_buttons_main(sc, color1, color2):
     print_text(sc1, WIDTH * 0.75, 100, 'Menu', 100, (255, 255, 255), font='src/font1.ttf')
     #pygame.draw.rect(sc, (255, 255, 255), (WIDTH * 0.75, 300, 130, 60), 2)
     print_text(sc1, WIDTH * 0.75, 300, 'Start', 80, color1, font='src/font2.ttf')
+    print_text(sc1, WIDTH * 0.75 + 150, 320, f'Level {level}', 50, (180, 180, 180), font='src/font2.ttf')
     #pygame.draw.rect(sc, (255, 255, 255), (WIDTH * 0.75, 400, 120, 60), 2)
     print_text(sc1, WIDTH * 0.75, 400, 'Quit', 80, color2, font='src/font2.ttf')
 
 
 def draw_main_menu():
+
     player1 = Player(110, 110)
     player1.angle = -30.1
     field1 = Field()
@@ -690,6 +691,8 @@ def draw_screamer(color):
 
 
 def draw_lose_screen():
+    pygame.mouse.set_visible(True)
+    pygame.event.set_grab(False)
     run = True
     while run:
         for event in pygame.event.get():
@@ -717,6 +720,8 @@ def draw_lose_screen():
 
 def draw_win_screen():
     run = True
+    pygame.mouse.set_visible(True)
+    pygame.event.set_grab(False)
     while run:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -766,9 +771,11 @@ while True:
         draw_screamer(result[1])
         draw_lose_screen()
         draw_main_menu()
+        level = 1
     else:
         draw_win_screen()
         draw_main_menu()
+        level += 1
 
     app.create_window()
     result = app.main()
