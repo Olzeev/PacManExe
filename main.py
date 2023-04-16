@@ -597,7 +597,7 @@ class App:
             res = self.check_events()
             if res == 'exit':
                 return res
-            if player.score == 10:
+            if player.score == 171:
                 pygame.mixer.Channel(0).stop()
                 pygame.mixer.Channel(1).stop()
                 pygame.mixer.Channel(2).stop()
