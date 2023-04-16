@@ -1,4 +1,5 @@
 import pygame
+pygame.init()
 import keyboard as key
 from const import *
 from math import sin, cos, radians, degrees, atan2
@@ -165,7 +166,7 @@ class Field:
             el = random.choice(to_choose)
             self.field[el[1]][el[0]] = 2
 
-    def draw_minimap(self, sc, player, k=5):
+    def draw_minimap(self, sc, player, frames, k=5):
         for raw in range(self.size_x):
             for tile in range(self.size_y):
                 dist_to_player = max((player.x // TILE_SIZE - raw) ** 2 + (player.y // TILE_SIZE - tile) ** 2, 1)
@@ -177,10 +178,8 @@ class Field:
                                      (raw * TILE_SIZE / k, tile * TILE_SIZE / k, TILE_SIZE / k, TILE_SIZE / k))
                     if self.field[tile][raw] == 0:
                         pygame.draw.circle(sc, (min(255 / dist_to_player, 255), min(255 / dist_to_player, 255), 0), (raw * TILE_SIZE / k + TILE_SIZE / 2 / k, tile * TILE_SIZE / k + TILE_SIZE / 2 / k), TILE_SIZE / k / 5)
-
-        pygame.draw.circle(sc, (255, 255, 255), (player.x / k, player.y / k), 5)
-        pygame.draw.line(sc, (255, 0, 0), (player.x / k, player.y / k),
-                         (player.x / k + 10 * cos(radians(player.angle)), (player.y / k - 10 * sin(radians(player.angle)))), 3)
+        ind = int(time / (FPS / 20)) % len(frames)
+        sc.blit(pygame.transform.rotate(frames[ind], player.angle), (player.x / k - frames[ind].get_width() / 2, player.y / k - frames[ind].get_height() / 2))
 
 
 class Player:
@@ -371,7 +370,7 @@ class Sprite:
                 if field.field[y][x] == 0 or field.field[y][x] == 2:
                     sprite_x = x * TILE_SIZE + TILE_SIZE / 2
                     sprite_y = y * TILE_SIZE + TILE_SIZE / 2
-                    if not ray_caster.check_intersection(sc, field, player.x, player.y, sprite_x, sprite_y):
+                    if dist_between_point(sprite_x, sprite_y, player.x, player.y) <= 800:
                         dist = ((player.x - (x * TILE_SIZE + TILE_SIZE / 2)) ** 2 + (player.y - (y * TILE_SIZE + TILE_SIZE / 2)) ** 2) ** 0.5
                         angle_p = player.angle % 360
                         dx, dy = x * TILE_SIZE + TILE_SIZE / 2 - player.x, player.y - y * TILE_SIZE - TILE_SIZE / 2
@@ -408,37 +407,37 @@ class Sprite:
     def draw_npc(self, sc, field, player, ray_caster, NPC_s):
         to_draw = []
         for npc in NPC_s:
-            if not ray_caster.check_intersection(sc, field, player.x, player.y, npc.x, npc.y):
-                dist = ((player.x - npc.x) ** 2 + (
-                            player.y - npc.y) ** 2) ** 0.5
-                angle_p = player.angle % 360
-                dx, dy = npc.x - player.x, player.y - npc.y
 
-                theta = degrees(atan2(dy, dx))
-                gamma = theta - angle_p
-                if dx > 0 and 180 <= angle_p <= 360 or dx < 0 and dy < 0:
-                    gamma += 360
+            dist = ((player.x - npc.x) ** 2 + (
+                        player.y - npc.y) ** 2) ** 0.5
+            angle_p = player.angle % 360
+            dx, dy = npc.x - player.x, player.y - npc.y
 
-                angle_delta = FOV / RAYS_AMOUNT
-                delta_rays = int(gamma / angle_delta)
-                center_ray = RAYS_AMOUNT // 2 - 1
-                current_ray = center_ray + delta_rays
-                dist *= cos(radians(FOV / 2 - current_ray * angle_delta))
+            theta = degrees(atan2(dy, dx))
+            gamma = theta - angle_p
+            if dx > 0 and 180 <= angle_p <= 360 or dx < 0 and dy < 0:
+                gamma += 360
 
-                if 0 <= current_ray <= RAYS_AMOUNT - 1:
-                    angle_in_screen_tan = (WALL_HEIGHT / 2) / dist
-                    fragment_height = angle_in_screen_tan * DISTANCE_TO_SCREEN * 2
-                    shift = 0
+            angle_delta = FOV / RAYS_AMOUNT
+            delta_rays = int(gamma / angle_delta)
+            center_ray = RAYS_AMOUNT // 2 - 1
+            current_ray = center_ray + delta_rays
+            dist *= cos(radians(FOV / 2 - current_ray * angle_delta))
 
-                    add_y = sin(time_moving / 5) * 30
-                    sprite_pos_on_screen = (WIDTH - current_ray * (WIDTH // RAYS_AMOUNT) - fragment_height / 2, HEIGHT / 2 - fragment_height / 2 + shift + add_y)
+            if 0 <= current_ray <= RAYS_AMOUNT - 1:
+                angle_in_screen_tan = (WALL_HEIGHT / 2) / dist
+                fragment_height = angle_in_screen_tan * DISTANCE_TO_SCREEN * 2
+                shift = 0
 
-                    if 0 <= sprite_pos_on_screen[0] < WIDTH and 0 <= sprite_pos_on_screen[1] < HEIGHT:
-                        c = min(int(255 / dist * 50), 255)
-                        if not player.super_mode:
-                            to_draw.append(('sprite', dist, npc.sprite, sprite_pos_on_screen, fragment_height))
-                        else:
-                            to_draw.append(('sprite', dist, npc.sprite_super, sprite_pos_on_screen, fragment_height))
+                add_y = sin(time_moving / 5) * 30
+                sprite_pos_on_screen = (WIDTH - current_ray * (WIDTH // RAYS_AMOUNT) - fragment_height / 2, HEIGHT / 2 - fragment_height / 2 + shift + add_y)
+
+                if 0 <= sprite_pos_on_screen[0] < WIDTH and 0 <= sprite_pos_on_screen[1] < HEIGHT:
+                    c = min(int(255 / dist * 50), 255)
+                    if not player.super_mode:
+                        to_draw.append(('sprite', dist, npc.sprite, sprite_pos_on_screen, fragment_height))
+                    else:
+                        to_draw.append(('sprite', dist, npc.sprite_super, sprite_pos_on_screen, fragment_height))
 
         return to_draw
 
@@ -488,8 +487,6 @@ class App:
                     elif x >= WIDTH / 2 - 96 and x <= WIDTH / 2 + 96 and y >= HEIGHT / 2 + 304 and y <= HEIGHT / 2 + 346:
                         global SENSITIVITY
                         SENSITIVITY = (x - (WIDTH / 2 - 96)) / 192
-
-
 
 
         if key.is_pressed('esc') and pause_duration_counter >= 20:
@@ -572,6 +569,16 @@ class App:
                  NPC(900, 950, pygame.image.load('src/ghosts/ghost2.png'), pygame.image.load('src/ghosts/ghost2_super.png'), 'blue'),
                  NPC(950, 950, pygame.image.load('src/ghosts/ghost3.png'), pygame.image.load('src/ghosts/ghost3_super.png'), 'yellow'),
                  NPC(1000, 950, pygame.image.load('src/ghosts/ghost4.png'), pygame.image.load('src/ghosts/ghost4_super.png'), 'pink')]
+        minimap_frames = [
+            pygame.transform.scale(pygame.image.load('src/pacman/frame1.png'), (20, 20)),
+            pygame.transform.scale(pygame.image.load('src/pacman/frame2.png'), (20, 20)),
+            pygame.transform.scale(pygame.image.load('src/pacman/frame3.png'), (20, 20)),
+            pygame.transform.scale(pygame.image.load('src/pacman/frame4.png'), (20, 20)),
+            pygame.transform.scale(pygame.image.load('src/pacman/frame5.png'),  (20, 20)),
+            pygame.transform.scale(pygame.image.load('src/pacman/frame4.png'), (20, 20)),
+            pygame.transform.scale(pygame.image.load('src/pacman/frame3.png'), (20, 20)),
+            pygame.transform.scale(pygame.image.load('src/pacman/frame2.png'), (20, 20)),
+        ]
 
         sprites = [Sprite(0, 'circle'),
                    Sprite(None, 'npc')]
@@ -586,12 +593,14 @@ class App:
             pygame.mixer.Sound('src/background_audio/8.oga'),
             pygame.mixer.Sound('src/background_audio/9.ogg')
         ]
-        pygame.mixer.Channel(0).set_volume(0.2)
+        pygame.mixer.Channel(0).set_volume(0.05)
         pygame.mixer.Channel(1).play(pygame.mixer.Sound('src/danger_theme.mp3'))
         pygame.mixer.Channel(1).set_volume(0)
-        pygame.mixer.Channel(4).set_volume(0.2)
+        pygame.mixer.Channel(4).set_volume(0.1)
         pygame.mixer.Channel(4).play(pygame.mixer.Sound('src/pacman_sound.mp3'))
+        pygame.mixer.Channel(5).set_volume(1)
         pygame.mixer.Channel(5).play(pygame.mixer.Sound('src/opening.mp3'))
+        pygame.mixer.Channel(6).set_volume(0.2)
         global score
         while self.run:
             res = self.check_events()
@@ -616,7 +625,7 @@ class App:
             to_draw += self.draw_sprites(self.sc, field, player, sprites, ray_caster, NPC_s)
             to_draw = sorted(to_draw, key=lambda x: x[1], reverse=True)
             self.draw(to_draw)
-            field.draw_minimap(self.sc, player)
+            field.draw_minimap(self.sc, player, minimap_frames)
 
             print_text(self.sc, WIDTH / 2, 10, str(player.score + player.score_super), 70, (255, 255, 0), align='center', font='src/font2.ttf')
             print_text(self.sc, WIDTH - 10, 10, str(int(self.clock.get_fps())), 50, (255, 0, 0), align='right')
@@ -636,7 +645,7 @@ class App:
                         score = player.score + player.score_super
                         return ('lose', npc.color)
                     else:
-                        pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/catch.wav'))
+                        pygame.mixer.Channel(6).play(pygame.mixer.Sound('src/catch.wav'))
                         if not npc.run_away:
                             player.score_super += 10
                         npc.run_away = True
@@ -648,7 +657,8 @@ class App:
                     npc.speed = 2
                 if not pause:
                     npc.move(self.sc, field, player, ray_caster)
-                pygame.draw.circle(self.sc, (255, 0, 0), (npc.x / 5, npc.y / 5), 10)
+                if player.super_mode:
+                    pygame.draw.circle(self.sc, (255, 0, 0), (npc.x / 5, npc.y / 5), 10)
 
             if hunt:
                 self.danger_volume = max(self.danger_volume, 0.02)
@@ -717,6 +727,8 @@ def draw_main_menu():
 
         print_text(sc1, WIDTH * 0.2, 120, 'PacMan', 100, (190, 190, 50), font='src/font4.ttf')
         print_text(sc1, WIDTH * 0.2 + 310, 120, '.exe', 100, (190, 0, 0), font='src/font4.ttf')
+        print_text(sc1, WIDTH * 0.3, HEIGHT - 200, 'Collect all the points in this dark maze', 30, (150, 150, 150), align='center', font='src/font2.ttf')
+        print_text(sc1, WIDTH * 0.3, HEIGHT - 150, 'Beware of ghosts. Heartbeat will tell you how far they are', 30, (150, 150, 150), align='center', font='src/font2.ttf')
 
         color1 = (255, 0, 0)
         color2 = (255, 0, 0)
@@ -733,7 +745,7 @@ def draw_main_menu():
 
 
 def draw_screamer(color):
-    pygame.mixer.Channel(0).set_volume(1)
+    pygame.mixer.Channel(0).set_volume(0.4)
     pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/screamer.mp3'))
     delta_y = 200
 
@@ -753,14 +765,15 @@ def draw_screamer(color):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 exit()
-            if event.type == pygame.MOUSEBUTTONDOWN and delta_y <= 1:
-                run = False
+
         sc1.blit(bg, (0, 0))
 
         sc1.blit(image, (WIDTH // 2 - image.get_width() // 2 + random.randint(-50, 50) * (delta_y / 200), delta_y - 200))
         image = pygame.transform.scale(image, (size, size))
         delta_y *= 0.95
         size += 10 * (delta_y / 200)
+        if delta_y <= 1:
+            run = False
         pygame.display.flip()
         clock1.tick(FPS)
 
@@ -841,7 +854,7 @@ result = None
 
 while True:
 
-    pygame.init()
+
     pygame.mixer.init()
     if result is None or result == 'exit':
         draw_main_menu()
