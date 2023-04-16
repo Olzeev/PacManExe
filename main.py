@@ -38,14 +38,16 @@ def print_text(sc, x, y, text, size, color, align='left', font=None):
 
 
 class NPC:
-    def __init__(self, x, y, sprite, color, angle=0.1, speed=3+level / 5):
+    def __init__(self, x, y, sprite, sprite_super, color, angle=0.1, speed=3+level / 5):
         self.x, self.y = x, y
         self.angle = angle
         self.sprite = sprite
+        self.sprite_super = sprite_super
         self.speed = speed
         self.hunt = False
         self.way_to_roam = (self.x // TILE_SIZE, self.y // TILE_SIZE)
         self.color = color
+        self.run_away = False
 
     def find_shortest_way(self, field, start, finish):  # made using BFS algorithm
         queue = [[start]]
@@ -57,12 +59,31 @@ class NPC:
             if y == finish[1] and x == finish[0]:
                 return path
             for x2, y2 in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                x2 = int(x2)
+                y2 = int(y2)
                 if 0 <= x2 < field.size_x and 0 <= y2 < field.size_y and field.field[y2][x2] != 1 and (x2, y2) not in seen:
                     queue.append(path + [(x2, y2)])
                     seen.add((x2, y2))
 
     def move(self, sc, field, player, raycaster):
-        if dist_between_point(self.x, self.y, player.x, player.y) <= 500 or not raycaster.check_intersection(sc, field, self.x, self.y, player.x, player.y):
+        if self.x // TILE_SIZE >= 8 and self.x // TILE_SIZE <= 10 and self.y // TILE_SIZE == 9:
+            self.run_away = False
+        if self.run_away and not (self.x // TILE_SIZE >= 8 and self.x // TILE_SIZE <= 10 and self.y // TILE_SIZE == 9):
+            way = self.find_shortest_way(field, (self.x // TILE_SIZE, self.y // TILE_SIZE), (9, 9))
+            if len(way) >= 2:
+                x_to = way[1][0] * TILE_SIZE + TILE_SIZE / 2
+                y_to = way[1][1] * TILE_SIZE + TILE_SIZE / 2
+
+                if x_to > self.x:
+                    self.x += 10
+                elif x_to < self.x:
+                    self.x -= 10
+
+                if y_to > self.y:
+                    self.y += 10
+                elif y_to < self.y:
+                    self.y -= 10
+        elif (dist_between_point(self.x, self.y, player.x, player.y) <= 500 or not raycaster.check_intersection(sc, field, self.x, self.y, player.x, player.y)) and not player.super_mode:
             self.hunt = True
             way = self.find_shortest_way(field, (self.x // TILE_SIZE, self.y // TILE_SIZE), (player.x // TILE_SIZE, player.y // TILE_SIZE))
 
@@ -132,8 +153,17 @@ class Field:
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         ]
+
         self.size_x = len(self.field[0])
         self.size_y = len(self.field)
+        to_choose = []
+        for x in range(self.size_x):
+            for y in range(self.size_y):
+                if self.field[y][x] == 0:
+                    to_choose.append((x, y))
+        for i in range(3):
+            el = random.choice(to_choose)
+            self.field[el[1]][el[0]] = 2
 
     def draw_minimap(self, sc, player, k=5):
         for raw in range(self.size_x):
@@ -161,6 +191,9 @@ class Player:
         self.speed = speed
         self.mouse_prev_x = WIDTH // 2
         self.score = 0
+        self.score_super = 0
+        self.super_mode = False
+        self.super_mode_duration = 0
 
     def check_movements(self, field):
         global moving
@@ -180,10 +213,18 @@ class Player:
                 self.y = y1
                 moving = True
                 moving_now = True
-                if field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] == 0:
+                if field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] == 0 and \
+                        (x1 // TILE_SIZE * TILE_SIZE + TILE_SIZE / 2 - x1) ** 2 + (
+                        y1 // TILE_SIZE * TILE_SIZE + TILE_SIZE / 2 - y1) ** 2 <= TILE_SIZE ** 2:
                     self.score += 1
                     field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] = -1
                     pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/point_claim.wav'))
+                elif field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] == 2 and \
+                        (x1 // TILE_SIZE * TILE_SIZE + TILE_SIZE / 2 - x1) ** 2 + (y1 // TILE_SIZE * TILE_SIZE + TILE_SIZE / 2 - y1) ** 2 <= TILE_SIZE ** 2:
+                    self.super_mode = True
+                    self.super_mode_duration = 0
+                    field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] = -1
+                    pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/bonus_claim.wav'))
 
         if key.is_pressed('a'):
             x1 = self.x + self.speed * cos(radians(self.angle + 90))
@@ -198,6 +239,12 @@ class Player:
                     self.score += 1
                     field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] = -1
                     pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/point_claim.wav'))
+                elif field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] == 2 and \
+                        (x1 // TILE_SIZE * TILE_SIZE + TILE_SIZE / 2 - x1) ** 2 + (y1 // TILE_SIZE * TILE_SIZE + TILE_SIZE / 2 - y1) ** 2 <= TILE_SIZE ** 2:
+                    self.super_mode = True
+                    self.super_mode_duration = 0
+                    field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] = -1
+                    pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/bonus_claim.wav'))
 
         if key.is_pressed('s'):
             x1 = self.x + self.speed * cos(radians(self.angle + 180))
@@ -212,6 +259,12 @@ class Player:
                     self.score += 1
                     field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] = -1
                     pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/point_claim.wav'))
+                elif field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] == 2 and \
+                        (x1 // TILE_SIZE * TILE_SIZE + TILE_SIZE / 2 - x1) ** 2 + (y1 // TILE_SIZE * TILE_SIZE + TILE_SIZE / 2 - y1) ** 2 <= TILE_SIZE ** 2:
+                    self.super_mode = True
+                    self.super_mode_duration = 0
+                    field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] = -1
+                    pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/bonus_claim.wav'))
 
         if key.is_pressed('d'):
             x1 = self.x + self.speed * cos(radians(self.angle - 90))
@@ -226,6 +279,12 @@ class Player:
                     self.score += 1
                     field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] = -1
                     pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/point_claim.wav'))
+                elif field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] == 2 and \
+                        (x1 // TILE_SIZE * TILE_SIZE + TILE_SIZE / 2 - x1) ** 2 + (y1 // TILE_SIZE * TILE_SIZE + TILE_SIZE / 2 - y1) ** 2 <= TILE_SIZE ** 2:
+                    self.super_mode = True
+                    self.super_mode_duration = 0
+                    field.field[int(y1 // TILE_SIZE)][int(x1 // TILE_SIZE)] = -1
+                    pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/bonus_claim.wav'))
 
 
         if not moving_now:
@@ -309,7 +368,7 @@ class Sprite:
         to_draw = []
         for x in range(field.size_x):
             for y in range(field.size_y):
-                if field.field[y][x] == self.digit_in_map:
+                if field.field[y][x] == 0 or field.field[y][x] == 2:
                     sprite_x = x * TILE_SIZE + TILE_SIZE / 2
                     sprite_y = y * TILE_SIZE + TILE_SIZE / 2
                     if not ray_caster.check_intersection(sc, field, player.x, player.y, sprite_x, sprite_y):
@@ -335,22 +394,15 @@ class Sprite:
 
                             add_y = sin(time_moving / 5) * 30
                             sprite_pos_on_screen = (WIDTH - current_ray * (WIDTH // RAYS_AMOUNT), HEIGHT / 2 - fragment_height / 2 + shift + add_y)
-
+                            c = min(int(255 / dist * 50), 255)
                             if 0 <= sprite_pos_on_screen[0] < WIDTH and 0 <= sprite_pos_on_screen[1] < HEIGHT:
-                                c = min(int(255 / dist * 50), 255)
+                                if field.field[y][x] == 0:
+                                    color = (c, c, 0)
+                                    to_draw.append(('circle', dist, color, sprite_pos_on_screen, fragment_height / 10))
+                                elif field.field[y][x] == 2:
+                                    color = (c, 0, 0)
+                                    to_draw.append(('circle', dist, color, sprite_pos_on_screen, fragment_height / 7))
 
-                                to_draw.append(('circle', dist, (c, c, 0), sprite_pos_on_screen, fragment_height / 10))
-
-
-                        '''
-                        if cos_a_sprite <= 0:
-                            angle_sprite = 180 - angle_sprite
-                            if abs(angle_sprite - player.angle % 180) <= FOV / 2:
-                                if angle_sprite >= player.angle % 180:
-                                    sprite_x = (angle_sprite - player.angle % 180) / (FOV / 2) * (WIDTH / 2)
-                                else:
-                                    sprite_x = (player.angle % 180 - angle_sprite) / (FOV / 2) * (WIDTH / 2)
-                        '''
         return to_draw
 
     def draw_npc(self, sc, field, player, ray_caster, NPC_s):
@@ -383,7 +435,10 @@ class Sprite:
 
                     if 0 <= sprite_pos_on_screen[0] < WIDTH and 0 <= sprite_pos_on_screen[1] < HEIGHT:
                         c = min(int(255 / dist * 50), 255)
-                        to_draw.append(('sprite', dist, npc.sprite, sprite_pos_on_screen, fragment_height))
+                        if not player.super_mode:
+                            to_draw.append(('sprite', dist, npc.sprite, sprite_pos_on_screen, fragment_height))
+                        else:
+                            to_draw.append(('sprite', dist, npc.sprite_super, sprite_pos_on_screen, fragment_height))
 
         return to_draw
 
@@ -433,7 +488,7 @@ class App:
                     elif x >= WIDTH / 2 - 96 and x <= WIDTH / 2 + 96 and y >= HEIGHT / 2 + 304 and y <= HEIGHT / 2 + 346:
                         global SENSITIVITY
                         SENSITIVITY = (x - (WIDTH / 2 - 96)) / 192
-                    #pygame.draw.rect(self.sc, (255, 255, 255), (WIDTH / 2 - 96, HEIGHT / 2 + 304, 192 * SENSITIVITY, 42))
+
 
 
 
@@ -505,7 +560,7 @@ class App:
         pygame.draw.rect(self.sc, (255, 255, 255), (WIDTH / 2 - 96, HEIGHT / 2 + 304, 192 * SENSITIVITY, 42))
 
     def main(self):
-        global pause
+        global pause, score
         pause = False
         pygame.mouse.set_pos((WIDTH // 2, HEIGHT // 2))
         pygame.mouse.set_visible(False)
@@ -513,10 +568,10 @@ class App:
         field = Field()
         player = Player(151, 151)
         ray_caster = RayCaster()
-        NPC_s = [NPC(850, 950, pygame.image.load('src/ghosts/ghost1.png'), 'red'),
-                 NPC(900, 950, pygame.image.load('src/ghosts/ghost2.png'), 'blue'),
-                 NPC(950, 950, pygame.image.load('src/ghosts/ghost3.png'), 'yellow'),
-                 NPC(1000, 950, pygame.image.load('src/ghosts/ghost4.png'), 'pink')]
+        NPC_s = [NPC(850, 950, pygame.image.load('src/ghosts/ghost1.png'), pygame.image.load('src/ghosts/ghost1_super.png'), 'red'),
+                 NPC(900, 950, pygame.image.load('src/ghosts/ghost2.png'), pygame.image.load('src/ghosts/ghost2_super.png'), 'blue'),
+                 NPC(950, 950, pygame.image.load('src/ghosts/ghost3.png'), pygame.image.load('src/ghosts/ghost3_super.png'), 'yellow'),
+                 NPC(1000, 950, pygame.image.load('src/ghosts/ghost4.png'), pygame.image.load('src/ghosts/ghost4_super.png'), 'pink')]
 
         sprites = [Sprite(0, 'circle'),
                    Sprite(None, 'npc')]
@@ -537,17 +592,20 @@ class App:
         pygame.mixer.Channel(4).set_volume(0.2)
         pygame.mixer.Channel(4).play(pygame.mixer.Sound('src/pacman_sound.mp3'))
         pygame.mixer.Channel(5).play(pygame.mixer.Sound('src/opening.mp3'))
+        global score
         while self.run:
             res = self.check_events()
             if res == 'exit':
                 return res
-            if player.score == 174:
+            if player.score == 10:
                 pygame.mixer.Channel(0).stop()
                 pygame.mixer.Channel(1).stop()
                 pygame.mixer.Channel(2).stop()
                 pygame.mixer.Channel(3).stop()
                 pygame.mixer.Channel(4).stop()
                 pygame.mixer.Channel(5).stop()
+
+                score = player.score + player.score_super
                 return 'win'
             if not pause:
                 player.check_movements(field)
@@ -560,25 +618,32 @@ class App:
             self.draw(to_draw)
             field.draw_minimap(self.sc, player)
 
-            print_text(self.sc, WIDTH / 2, 10, str(player.score), 70, (255, 255, 0), align='center', font='src/font2.ttf')
-            #print_text(self.sc, WIDTH - 10, 10, str(int(self.clock.get_fps())), 50, (255, 0, 0), align='right')
+            print_text(self.sc, WIDTH / 2, 10, str(player.score + player.score_super), 70, (255, 255, 0), align='center', font='src/font2.ttf')
+            print_text(self.sc, WIDTH - 10, 10, str(int(self.clock.get_fps())), 50, (255, 0, 0), align='right')
 
             hunt = False
             for npc in NPC_s:
                 if dist_between_point(player.x, player.y, npc.x, npc.y) <= 70:
-                    self.run = False
-                    pygame.mixer.Channel(0).stop()
-                    pygame.mixer.Channel(1).stop()
-                    pygame.mixer.Channel(2).stop()
-                    pygame.mixer.Channel(3).stop()
-                    pygame.mixer.Channel(4).stop()
-                    pygame.mixer.Channel(5).stop()
-                    global score
-                    score = player.score
-                    return ('lose', npc.color)
-                if npc.hunt:
+                    if not player.super_mode:
+                        self.run = False
+                        pygame.mixer.Channel(0).stop()
+                        pygame.mixer.Channel(1).stop()
+                        pygame.mixer.Channel(2).stop()
+                        pygame.mixer.Channel(3).stop()
+                        pygame.mixer.Channel(4).stop()
+                        pygame.mixer.Channel(5).stop()
+
+                        score = player.score + player.score_super
+                        return ('lose', npc.color)
+                    else:
+                        pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/catch.wav'))
+                        if not npc.run_away:
+                            player.score_super += 10
+                        npc.run_away = True
+                        npc.speed = 4
+                elif npc.hunt:
                     hunt = True
-                    npc.speed = 4
+                    npc.speed = 4 + level / 5
                 else:
                     npc.speed = 2
                 if not pause:
@@ -611,7 +676,9 @@ class App:
 
             if pause:
                 self.draw_pause()
-
+            player.super_mode_duration += 1
+            if player.super_mode_duration >= FPS * 10:
+                player.super_mode = False
             self.update_window()
 
 
@@ -743,14 +810,17 @@ def draw_win_screen():
 
         print_text(sc1, WIDTH / 2, 150, 'Game complete', 100, (200, 200, 200), align='center', font='src/font3.ttf')
         print_text(sc1, WIDTH / 2 - 200, HEIGHT / 2 - 50, 'Time:', 100, (200, 0, 0), align='left', font='src/font4.ttf')
-        surf = print_text(sc1, WIDTH / 2 + 20, HEIGHT / 2 - 50, str(time // 60 // 60), 100, (180, 180, 180),
+        surf = print_text(sc1, WIDTH / 2 + 20, HEIGHT / 2 - 50, str(time // FPS // 60), 100, (180, 180, 180),
                    align='left', font='src/font4.ttf')
         print_text(sc1, WIDTH / 2 + 20 + surf.get_width() + 10, HEIGHT / 2 - 50, 'm', 100, (200, 0, 0),
                    align='left', font='src/font4.ttf')
-        surf1 = print_text(sc1, WIDTH / 2 + 120 + surf.get_width(), HEIGHT / 2 - 50, str((time // 60) % 60), 100, (180, 180, 180),
+        surf1 = print_text(sc1, WIDTH / 2 + 120 + surf.get_width(), HEIGHT / 2 - 50, str((time // FPS) % 60), 100, (180, 180, 180),
                    align='left', font='src/font4.ttf')
         print_text(sc1, WIDTH / 2 + 140 + surf.get_width() + surf1.get_width(), HEIGHT / 2 - 50, 's', 100, (200, 0, 0),
                    align='left', font='src/font4.ttf')
+
+        print_text(sc1, WIDTH / 2, HEIGHT / 2 + 150, f'score {score}', 100, (200, 0, 0),
+                   align='center', font='src/font2.ttf')
 
         x, y = pygame.mouse.get_pos()
         delta_color = 0
@@ -776,14 +846,15 @@ while True:
     if result is None or result == 'exit':
         draw_main_menu()
     elif type(result) == tuple:
+        level = 1
         draw_screamer(result[1])
         draw_lose_screen()
         draw_main_menu()
-        level = 1
     else:
+        level += 1
         draw_win_screen()
         draw_main_menu()
-        level += 1
+
 
     app.create_window()
     result = app.main()
