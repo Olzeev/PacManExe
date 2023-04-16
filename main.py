@@ -460,6 +460,8 @@ class App:
         self.beat_duration = 100
         self.beat_duration_counter = 0
         self.danger_volume = 0
+        self.show_plus_10 = False
+        self.show_plus_10_duration = 0
 
 
     def check_events(self):
@@ -632,6 +634,12 @@ class App:
             print_text(self.sc, WIDTH / 2, 10, f'{player.score}', 70, (255, 255, 0), align='center',
                        font='src/font2.ttf')
             print_text(self.sc, WIDTH - 10, 10, str(int(self.clock.get_fps())), 50, (255, 0, 0), align='right')
+            if self.show_plus_10:
+                self.show_plus_10_duration += 1
+                print_text(self.sc, WIDTH / 2, HEIGHT / 4, '+10', 30, (180, 180, 180), align='center', font='src/font4.ttf')
+                if self.show_plus_10_duration >= FPS * 3:
+                    self.show_plus_10 = False
+                    self.show_plus_10_duration = 0
             if time <= FPS * 5:
                 print_text(self.sc, WIDTH / 2, HEIGHT / 2 - 100, f'Level {level}', 100, (255, 0, 0), align='center',
                            font='src/font2.ttf')
@@ -655,6 +663,7 @@ class App:
                         pygame.mixer.Channel(6).play(pygame.mixer.Sound('src/catch.wav'))
                         if not npc.run_away:
                             player.score_super += 10
+                            self.show_plus_10 = True
                         npc.run_away = True
                         npc.speed = 4
                 elif npc.hunt:
