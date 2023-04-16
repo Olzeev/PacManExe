@@ -13,7 +13,7 @@ pause_duration_counter = 0
 score = 0
 floor = pygame.transform.scale(pygame.image.load('src/floor.png'), (WIDTH, HEIGHT / 2))
 level = 1
-super_points = 10
+super_points = 5
 points = 100
 
 def check_one_signed(a, b):
@@ -657,7 +657,7 @@ class App:
                         pygame.mixer.Channel(4).stop()
                         pygame.mixer.Channel(5).stop()
 
-                        score = player.score + player.score_super
+                        score += player.score + player.score_super
                         return ('lose', npc.color)
                     else:
                         pygame.mixer.Channel(6).play(pygame.mixer.Sound('src/catch.wav'))
@@ -743,7 +743,7 @@ def draw_main_menu():
 
         print_text(sc1, WIDTH * 0.2, HEIGHT * 0.1, 'PacMan', 100, (190, 190, 50), font='src/font4.ttf')
         print_text(sc1, WIDTH * 0.2 + 310, HEIGHT * 0.1, '.exe', 100, (190, 0, 0), font='src/font4.ttf')
-        print_text(sc1, WIDTH * 0.3, HEIGHT - 200, 'Collect all the points in this dark maze', 30, (150, 150, 150), align='center', font='src/font2.ttf')
+        print_text(sc1, WIDTH * 0.3, HEIGHT - 200, 'Collect points in this dark maze', 30, (150, 150, 150), align='center', font='src/font2.ttf')
         print_text(sc1, WIDTH * 0.3, HEIGHT - 150, 'Beware of ghosts. Heartbeat will tell you how far they are', 30, (150, 150, 150), align='center', font='src/font2.ttf')
 
         color1 = (255, 0, 0)
