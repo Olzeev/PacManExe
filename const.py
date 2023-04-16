@@ -1,7 +1,7 @@
 import pygame.display
 
 WIDTH, HEIGHT = pygame.display.Info().current_w, pygame.display.Info().current_h
-FPS = 60
+FPS = 40
 
 FOV = 90
 TILE_SIZE = 100

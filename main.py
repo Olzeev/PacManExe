@@ -13,7 +13,8 @@ pause_duration_counter = 0
 score = 0
 floor = pygame.transform.scale(pygame.image.load('src/floor.png'), (WIDTH, HEIGHT / 2))
 level = 1
-
+super_points = 10
+points = 100
 
 def check_one_signed(a, b):
     if (a >= 0 and b >= 0) or (a <= 0 and b <= 0):
@@ -162,7 +163,7 @@ class Field:
             for y in range(self.size_y):
                 if self.field[y][x] == 0:
                     to_choose.append((x, y))
-        for i in range(3):
+        for i in range(super_points):
             el = random.choice(to_choose)
             self.field[el[1]][el[0]] = 2
 
@@ -170,12 +171,13 @@ class Field:
         for raw in range(self.size_x):
             for tile in range(self.size_y):
                 dist_to_player = max((player.x // TILE_SIZE - raw) ** 2 + (player.y // TILE_SIZE - tile) ** 2, 1)
-                if self.field[tile][raw] == 1:
-                    pygame.draw.rect(sc, (0, 0, min(150 / dist_to_player, 150)),
-                                     (raw * TILE_SIZE / k, tile * TILE_SIZE / k, TILE_SIZE / k, TILE_SIZE / k))
-                else:
-                    pygame.draw.rect(sc, (0, 0, min(50 / dist_to_player, 50)),
-                                     (raw * TILE_SIZE / k, tile * TILE_SIZE / k, TILE_SIZE / k, TILE_SIZE / k))
+                if player.super_mode or dist_to_player <= 10:
+                    if self.field[tile][raw] == 1:
+                        pygame.draw.rect(sc, (0, 0, min(150 / dist_to_player, 150)),
+                                         (raw * TILE_SIZE / k, tile * TILE_SIZE / k, TILE_SIZE / k, TILE_SIZE / k))
+                    else:
+                        pygame.draw.rect(sc, (0, 0, min(50 / dist_to_player, 50)),
+                                         (raw * TILE_SIZE / k, tile * TILE_SIZE / k, TILE_SIZE / k, TILE_SIZE / k))
                     if self.field[tile][raw] == 0:
                         pygame.draw.circle(sc, (min(255 / dist_to_player, 255), min(255 / dist_to_player, 255), 0), (raw * TILE_SIZE / k + TILE_SIZE / 2 / k, tile * TILE_SIZE / k + TILE_SIZE / 2 / k), TILE_SIZE / k / 5)
         ind = int(time / (FPS / 20)) % len(frames)
@@ -312,7 +314,7 @@ class RayCaster:
             y_cur, delta_y = (y_tile, -1) if sin_a > 0 else (y_tile + TILE_SIZE, 1)
 
             for i in range(0, field.size_x * TILE_SIZE, TILE_SIZE):
-                dist_x = (x_cur - player.x) / cos_a
+                dist_x = (x_cur - player.x) / (cos_a if cos_a != 0 else 0.0001)
                 y = player.y - dist_x * sin_a
                 ind_x = int((x_cur + delta_x) // TILE_SIZE)
                 ind_y = int(y // TILE_SIZE)
@@ -321,7 +323,7 @@ class RayCaster:
                 x_cur += delta_x * TILE_SIZE
 
             for i in range(0, field.size_y * TILE_SIZE, TILE_SIZE):
-                dist_y = (player.y - y_cur) / sin_a
+                dist_y = (player.y - y_cur) / (sin_a if sin_a != 0 else 0.0001)
                 x = player.x + dist_y * cos_a
                 ind_x = int(x // TILE_SIZE)
                 ind_y = int((y_cur + delta_y) // TILE_SIZE)
@@ -548,9 +550,9 @@ class App:
         elif x >= WIDTH / 2 - 200 and x <= WIDTH / 2 + 200 and y >= HEIGHT / 2 + 80 and y <= HEIGHT / 2 + 180:
             color_delta2 = 50
         pygame.draw.rect(self.sc, (180 - color_delta1, 0, 0), (WIDTH / 2 - 200, HEIGHT / 2 - 120, 400, 100), border_radius=10)
-        print_text(self.sc, WIDTH / 2, HEIGHT / 2 - 100, 'Continue', 60, (255 - color_delta1, 255 - color_delta1, 255 - color_delta1), align='center', font='src/font3.ttf')
+        print_text(self.sc, WIDTH / 2, HEIGHT / 2 - 110, 'Continue', 60, (255 - color_delta1, 255 - color_delta1, 255 - color_delta1), align='center', font='src/font3.ttf')
         pygame.draw.rect(self.sc, (180 - color_delta2, 0, 0), (WIDTH / 2 - 200, HEIGHT / 2 + 80, 400, 100), border_radius=10)
-        print_text(self.sc, WIDTH / 2, HEIGHT / 2 + 100, 'Main menu', 60, (255 - color_delta2, 255 - color_delta2, 255 - color_delta2), align='center', font='src/font3.ttf')
+        print_text(self.sc, WIDTH / 2, HEIGHT / 2 + 90, 'Main menu', 60, (255 - color_delta2, 255 - color_delta2, 255 - color_delta2), align='center', font='src/font3.ttf')
         print_text(self.sc, WIDTH / 2, HEIGHT / 2 + 250, 'Sensitivity', 30,
                    (255, 255, 255), align='center', font='src/font3.ttf')
         pygame.draw.rect(self.sc, (255, 255, 255), (WIDTH / 2 - 100, HEIGHT / 2 + 300, 200, 50), 2)
@@ -606,7 +608,7 @@ class App:
             res = self.check_events()
             if res == 'exit':
                 return res
-            if player.score == 171:
+            if player.score >= points:
                 pygame.mixer.Channel(0).stop()
                 pygame.mixer.Channel(1).stop()
                 pygame.mixer.Channel(2).stop()
@@ -614,7 +616,7 @@ class App:
                 pygame.mixer.Channel(4).stop()
                 pygame.mixer.Channel(5).stop()
 
-                score = player.score + player.score_super
+                score += player.score + player.score_super
                 return 'win'
             if not pause:
                 player.check_movements(field)
@@ -627,8 +629,13 @@ class App:
             self.draw(to_draw)
             field.draw_minimap(self.sc, player, minimap_frames)
 
-            print_text(self.sc, WIDTH / 2, 10, str(player.score + player.score_super), 70, (255, 255, 0), align='center', font='src/font2.ttf')
+            print_text(self.sc, WIDTH / 2, 10, f'{player.score}', 70, (255, 255, 0), align='center',
+                       font='src/font2.ttf')
             print_text(self.sc, WIDTH - 10, 10, str(int(self.clock.get_fps())), 50, (255, 0, 0), align='right')
+            if time <= FPS * 5:
+                print_text(self.sc, WIDTH / 2, HEIGHT / 2 - 100, f'Level {level}', 100, (255, 0, 0), align='center',
+                           font='src/font2.ttf')
+                print_text(self.sc, WIDTH / 2, HEIGHT / 2, f'Collect {points} points', 100, (180, 180, 180), align='center', font='src/font2.ttf')
 
             hunt = False
             for npc in NPC_s:
@@ -652,7 +659,7 @@ class App:
                         npc.speed = 4
                 elif npc.hunt:
                     hunt = True
-                    npc.speed = 4 + level / 5
+                    npc.speed = 3 + level / 3
                 else:
                     npc.speed = 2
                 if not pause:
@@ -693,12 +700,12 @@ class App:
 
 
 def draw_buttons_main(sc, color1, color2):
-    print_text(sc1, WIDTH * 0.75, 100, 'Menu', 100, (255, 255, 255), font='src/font1.ttf')
+    print_text(sc1, WIDTH * 0.75, HEIGHT * 0.1, 'Menu', 100, (255, 255, 255), font='src/font1.ttf')
     #pygame.draw.rect(sc, (255, 255, 255), (WIDTH * 0.75, 300, 130, 60), 2)
-    print_text(sc1, WIDTH * 0.75, 300, 'Start', 80, color1, font='src/font2.ttf')
-    print_text(sc1, WIDTH * 0.75 + 150, 320, f'Level {level}', 50, (180, 180, 180), font='src/font2.ttf')
+    print_text(sc1, WIDTH * 0.75, HEIGHT * 0.1 + 150, 'Start', 80, color1, font='src/font2.ttf')
+    print_text(sc1, WIDTH * 0.75 + 150, HEIGHT * 0.1 + 170, f'Level {level}', 50, (180, 180, 180), font='src/font2.ttf')
     #pygame.draw.rect(sc, (255, 255, 255), (WIDTH * 0.75, 400, 120, 60), 2)
-    print_text(sc1, WIDTH * 0.75, 400, 'Quit', 80, color2, font='src/font2.ttf')
+    print_text(sc1, WIDTH * 0.75, HEIGHT * 0.1 + 230, 'Quit', 80, color2, font='src/font2.ttf')
 
 
 def draw_main_menu():
@@ -707,7 +714,7 @@ def draw_main_menu():
     player1.angle = -30.1
     field1 = Field()
     bg = pygame.transform.scale(pygame.image.load('src/main_menu_bg.png'), (WIDTH, HEIGHT))
-    manual = pygame.transform.scale(pygame.image.load('src/manual.png'), (300, 411))
+    manual = pygame.transform.scale(pygame.image.load('src/manual.png'), (HEIGHT * 0.4 * 0.73, HEIGHT * 0.4))
     raycaster1 = RayCaster()
     run = True
     pygame.mixer.Channel(0).play(pygame.mixer.Sound('src/background_music.mp3'))
@@ -718,28 +725,28 @@ def draw_main_menu():
                 exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
-                if x >= WIDTH * 0.75 and x <= WIDTH * 0.75 + 130 and y >= 300 and y <= 360:
+                if x >= WIDTH * 0.75 and x <= WIDTH * 0.75 + 130 and y >= HEIGHT * 0.1 + 150 and y <= HEIGHT * 0.1 + 210:
                     run = False
                     pygame.mixer.Channel(0).stop()
-                elif x >= WIDTH * 0.75 and x <= WIDTH * 0.75 + 120 and y >= 400 and y <= 460:
+                elif x >= WIDTH * 0.75 and x <= WIDTH * 0.75 + 120 and y >= HEIGHT * 0.1 + 230 and y <= HEIGHT * 0.1 + 290:
                     exit()
         sc1.blit(bg, (0, 0))
 
-        print_text(sc1, WIDTH * 0.2, 120, 'PacMan', 100, (190, 190, 50), font='src/font4.ttf')
-        print_text(sc1, WIDTH * 0.2 + 310, 120, '.exe', 100, (190, 0, 0), font='src/font4.ttf')
+        print_text(sc1, WIDTH * 0.2, HEIGHT * 0.1, 'PacMan', 100, (190, 190, 50), font='src/font4.ttf')
+        print_text(sc1, WIDTH * 0.2 + 310, HEIGHT * 0.1, '.exe', 100, (190, 0, 0), font='src/font4.ttf')
         print_text(sc1, WIDTH * 0.3, HEIGHT - 200, 'Collect all the points in this dark maze', 30, (150, 150, 150), align='center', font='src/font2.ttf')
         print_text(sc1, WIDTH * 0.3, HEIGHT - 150, 'Beware of ghosts. Heartbeat will tell you how far they are', 30, (150, 150, 150), align='center', font='src/font2.ttf')
 
         color1 = (255, 0, 0)
         color2 = (255, 0, 0)
         x, y = pygame.mouse.get_pos()
-        if x >= WIDTH * 0.75 and x <= WIDTH * 0.75 + 130 and y >= 300 and y <= 360:
+        if x >= WIDTH * 0.75 and x <= WIDTH * 0.75 + 130 and y >= HEIGHT * 0.1 + 150 and y <= HEIGHT * 0.1 + 210:
             color1 = (180, 0, 0)
-        if x >= WIDTH * 0.75 and x <= WIDTH * 0.75 + 120 and y >= 400 and y <= 460:
+        if x >= WIDTH * 0.75 and x <= WIDTH * 0.75 + 120 and y >= HEIGHT * 0.1 + 230 and y <= HEIGHT * 0.1 + 290:
             color2 = (180, 0, 0)
 
         draw_buttons_main(sc1, color1, color2)
-        sc1.blit(manual, (WIDTH - 500, HEIGHT - 500))
+        sc1.blit(manual, (WIDTH - manual.get_width() - 10, HEIGHT - manual.get_height() - 10))
         pygame.display.flip()
         clock1.tick(FPS)
 
@@ -793,8 +800,10 @@ def draw_lose_screen():
 
         sc1.fill((0, 0, 0))
 
-        print_text(sc1, WIDTH / 2, 150, 'Game Over', 100, (180, 0, 0), align='center', font='src/font3.ttf')
-        print_text(sc1, WIDTH / 2, HEIGHT / 2 - 50, 'Score ' + str(score), 100, (200, 0, 0), align='center', font='src/font2.ttf')
+        print_text(sc1, WIDTH / 2, HEIGHT * 0.1, 'Game Over', 100, (180, 0, 0), align='center', font='src/font3.ttf')
+        print_text(sc1, WIDTH / 2, HEIGHT * 0.5, 'Score ' + str(score), 100, (200, 0, 0), align='center', font='src/font2.ttf')
+        print_text(sc1, WIDTH / 2, HEIGHT * 0.4, f'Reached level {level}', 100, (200, 0, 0), align='center',
+                   font='src/font2.ttf')
 
         x, y = pygame.mouse.get_pos()
         delta_color = 0
@@ -816,12 +825,12 @@ def draw_win_screen():
                 exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
-                if x >= WIDTH / 2 - 150 and x <= WIDTH / 2 + 150 and y >= HEIGHT - 200 and y <= HEIGHT - 100:
+                if x >= WIDTH / 2 - 150 and x <= WIDTH / 2 + 150 and y >= HEIGHT * 0.85 and y <= HEIGHT * 0.85 + 100:
                     run = False
 
         sc1.fill((0, 0, 0))
 
-        print_text(sc1, WIDTH / 2, 150, 'Game complete', 100, (200, 200, 200), align='center', font='src/font3.ttf')
+        print_text(sc1, WIDTH / 2, HEIGHT * 0.1, f'Level {level - 1} complete', 100, (200, 200, 200), align='center', font='src/font3.ttf')
         print_text(sc1, WIDTH / 2 - 200, HEIGHT / 2 - 50, 'Time:', 100, (200, 0, 0), align='left', font='src/font4.ttf')
         surf = print_text(sc1, WIDTH / 2 + 20, HEIGHT / 2 - 50, str(time // FPS // 60), 100, (180, 180, 180),
                    align='left', font='src/font4.ttf')
@@ -837,12 +846,14 @@ def draw_win_screen():
 
         x, y = pygame.mouse.get_pos()
         delta_color = 0
-        if x >= WIDTH / 2 - 150 and x <= WIDTH / 2 + 150 and y >= HEIGHT - 200 and y <= HEIGHT - 100:
+        if x >= WIDTH / 2 - 150 and x <= WIDTH / 2 + 150 and y >= HEIGHT * 0.85 and y <= HEIGHT * 0.85 + 100:
             delta_color = 50
-        print_text(sc1, WIDTH / 2, HEIGHT - 200, 'Continue', 100, (180 - delta_color, 180 - delta_color, 180 - delta_color), align='center', font='src/font2.ttf')
+        print_text(sc1, WIDTH / 2, HEIGHT * 0.85, 'Continue', 100, (180 - delta_color, 180 - delta_color, 180 - delta_color), align='center', font='src/font2.ttf')
 
         pygame.display.flip()
         clock1.tick(FPS)
+
+
 
 
 app = App()
@@ -858,15 +869,21 @@ while True:
     pygame.mixer.init()
     if result is None or result == 'exit':
         draw_main_menu()
+        time = 0
     elif type(result) == tuple:
-        level = 1
+
         draw_screamer(result[1])
         draw_lose_screen()
+        level = 1
         draw_main_menu()
+
     else:
         level += 1
         draw_win_screen()
-        draw_main_menu()
+        time = 0
+        super_points = max(1, super_points - 1)
+        points1 = 174 - super_points
+        points = int(100 + min((level - 1) / 10, 1) * (points1 - 100))
 
 
     app.create_window()
