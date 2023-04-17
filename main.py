@@ -884,6 +884,7 @@ while True:
         draw_screamer(result[1])
         draw_lose_screen()
         level = 1
+        score = 0
         draw_main_menu()
 
     else:
