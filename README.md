@@ -34,3 +34,23 @@ or
 ```
 python main.py
 ```
+
+## Change game parameters
+
+In 'const' file you can change some game params.
+```commandline
+WIDTH, HEIGHT = pygame.display.Info().current_w, pygame.display.Info().current_h
+FPS = 40
+
+FOV = 90
+TILE_SIZE = 100
+RAY_LENGTH = TILE_SIZE * 10
+RAYS_AMOUNT = int(WIDTH / 15)
+WALL_HEIGHT = int(HEIGHT * 0.8)
+DISTANCE_TO_SCREEN = 100
+SENSITIVITY = 0.3
+```
+
+I don't recommend to change 'TILE_SIZE', 'WALL_HEIGHT' and 'DISTANCE_TO_SCREEN' variables.
+They are critical to the proper functioning of the game. Feel free to change other.
+Remember that 'RAYS_AMOUNT' must be a divider of 'WIDTH' variable.
